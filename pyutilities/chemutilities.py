@@ -1,3 +1,4 @@
+import matplotlib as mpl
 import matplotlib.pyplot as plt
 from matplotlib.ticker import FuncFormatter
 import pandas as pd
@@ -330,9 +331,11 @@ def format_ions(text):
     if isinstance(text, list):
         mapped = [_format_ions(x) for x in text]
     elif isinstance(text, str):
-        mapped = _format_ions(x)
+        mapped = _format_ions(text)
     else:
-        raise KeyError("`text` must be a string or a list of string")
+        raise KeyError(
+            "`text` must be a {x,y}ticklabels, a list of string or string"
+        )
     return mapped
 
 class plot():

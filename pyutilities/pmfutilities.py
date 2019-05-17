@@ -433,6 +433,192 @@ class PMF(object):
         for fmt in formats:
             plt.savefig("{DIR}{name}.{fmt}".format(DIR=DIR, name=name, fmt=fmt))
 
+    def _plot_per_microgramm(self, df=None, profile=None, species=None,
+                             new_figure=False, **kwargs):
+        """
+        """
+        import seaborn as sns
+        from chemutilities import format_ions
+
+        if new_figure:
+            plt.figure(figsize=(12, 4))
+            ax = plt.gca()
+        elif "ax" in kwargs:
+            ax = kwargs["ax"]
+
+        d = df.xs(profile, level="profile") \
+                / (df.xs(profile, level="profile").loc[self.totalVar])
+        d = d.reindex(species).unstack().reset_index()
+        dref = self.dfprofiles_c[profile] / self.dfprofiles_c.loc[self.totalVar, profile]
+        dref = dref.reset_index()
+        sns.boxplot(data=d.replace({0: pd.np.nan}), x="level_1", y=0,
+                    color="grey", ax=ax)
+        sns.stripplot(data=dref.replace({0: pd.np.nan}), x="specie", y=profile,
+                      ax=ax, jitter=False, color="red")
+        ax.set_yscale('log')
+        ax.set_xticklabels(
+            format_ions([t.get_text() for t in ax.get_xticklabels()]),
+            rotation=90
+        )
+        ax.set_ylim((10e-6, 3))
+        ax.set_ylabel("µg/µg")
+        ax.set_xlabel("")
+        ax.set_title(profile)
+
+    def _plot_totalspeciesum(self, df=None, profile=None, species=None,
+                             sumsp=None, new_figure=False, **kwargs):
+        import seaborn as sns
+        from chemutilities import format_ions
+        """TODO: Docstring for _plot_totalspeciesum.
+
+        :df: TODO
+        :profile: TODO
+        :species: TODO
+        :sumsp: dataframe with the sum of each species
+        :new_figure: TODO
+        :returns: TODO
+
+        """
+        if new_figure:
+            plt.figure(figsize=(12, 4))
+            ax = plt.gca()
+        elif "ax" in kwargs:
+            ax = kwargs["ax"]
+
+        if sumsp is None:
+            sumsp = pd.DataFrame(columns=species, index=['sum'])
+            for sp in species:
+                sumsp[sp] = df.loc[(sp, slice(None)), :].mean(axis=1).sum()
+
+        d = df.xs(profile, level="profile").divide(sumsp.iloc[0], axis=0) * 100
+        d = d.reindex(species).unstack().reset_index()
+        dref = self.dfprofiles_c[profile].divide(self.dfprofiles_c.sum(axis=1))*100
+        dref = dref.reset_index()
+        sns.barplot(data=d, x="level_1", y=0, color="grey", ci="sd", ax=ax)
+        sns.stripplot(data=dref, x="specie", y=0, color="red", jitter=False, ax=ax)
+        ax.set_xticklabels(
+            format_ions([t.get_text() for t in ax.get_xticklabels()]),
+            rotation=90
+        )
+        ax.set_ylim((0, 100))
+        ax.set_ylabel("% of total specie sum")
+        ax.set_xlabel("")
+        ax.set_title(profile)
+
+    def _plot_contrib(self, dfBS=None, dfDISP=None, dfcontrib=None,
+                      profile=None, specie=None, BS=True, DISP=True,
+                      BSDISP=False, new_figure=False, **kwargs):
+        """TODO: Docstring for _plot_contrib.
+
+        :dfBS: TODO
+        :dfDISP: TODO
+        :dfcontrib: TODO
+        :profile: TODO
+        :specie: TODO
+        :BS: TODO
+        :DISP: TODO
+        :BSDISP: TODO
+        :new_figure: TODO
+        :returns: TODO
+
+        """
+        import seaborn as sns
+        
+        if new_figure:
+            plt.figure(figsize=(12, 4))
+            ax = plt.gca()
+        elif "ax" in kwargs:
+            ax = kwargs["ax"]
+
+        fill_kwarg = dict(
+            alpha=0.5,
+            edgecolor="black",
+            linewidth=0,
+        )
+        with sns.axes_style("ticks"):
+            if BS:
+                d = pd.DataFrame(
+                    columns=dfBS.columns,
+                    index=dfcontrib.index
+                )
+                for BS in dfBS.columns:
+                    d[BS] = dfcontrib[profile] * dfBS.xs(profile, level="profile").loc[specie][BS]
+                mstd = d.std(axis=1)
+                ma = d.mean(axis=1)
+                plt.fill_between(
+                    ma.index, ma-mstd, ma+mstd,
+                    label="BS (sd)", **fill_kwarg
+                )
+                # d.mean(axis=1).plot(marker="*")
+            if DISP:
+                d = pd.DataFrame(
+                    columns=dfDISP.columns,
+                    index=dfcontrib.index
+                )
+                for DISP in ["DISP Min", "DISP Max"]:
+                    d[DISP] = dfcontrib[profile] * dfDISP.xs(profile, level="profile").loc[specie][DISP]
+                plt.fill_between(
+                    d.index, d["DISP Min"], d["DISP Max"],
+                    label="DISP (min-max)", **fill_kwarg
+                )
+            plt.plot(
+                dfcontrib.index, dfcontrib[profile] * self.dfprofiles_c.loc[specie, profile],
+                color="#888a85", marker="*", label="Ref. run"
+            )
+            ax.set_ylabel("Contribution to {} ($µg.m^{{-3}}$)".format(specie))
+            ax.set_xlabel("")
+            ax.set_title(profile)
+            ax.legend(loc="upper left", bbox_to_anchor=(1., 1.), frameon=False)
+
+    def _plot_profile(self, dfcontrib=None, dfBS=None, dfDISP=None, profile=None,
+                      specie=None, BS=False, DISP=False, BSDISP=False):
+        """TODO: Docstring for _plot_profile.
+
+        :dfcontrib: TODO
+        :dfprofile: TODO
+        :profile: TODO
+        :specie: TODO
+        :BS: TODO
+        :DISP: TODO
+        :BSDISP: TODO
+        :returns: TODO
+
+        """
+        fig, axes = plt.subplots(nrows=3, ncols=1, figsize=(12, 12))
+        axes[0].get_shared_x_axes().join(axes[0], axes[1])
+        self._plot_per_microgramm(
+            dfBS, profile=profile, species=self.species,
+            new_figure=False, ax=axes[0]
+        )
+
+        self._plot_totalspeciesum(
+            dfBS, profile=profile, species=self.species,
+            new_figure=False, ax=axes[1]
+        )
+
+        self._plot_contrib(
+            dfcontrib=dfcontrib,
+            dfBS=dfBS, dfDISP=dfDISP,
+            BS=BS, DISP=DISP,
+            profile=profile, specie=specie,
+            new_figure=False, ax=axes[2]
+        )
+
+        # axes[0].xaxis.tick_top()
+
+        for ax in axes:
+            ax.set_title("")
+        fig.suptitle(profile)
+
+        fig.subplots_adjust(
+            top=0.95,
+            bottom=0.05,
+            left=0.125,
+            right=0.865,
+            hspace=0.40,
+            wspace=0.015
+        )
+
     def plot_per_microgramm(self, df=None, profiles=None, species=None,
             plot_save=False, BDIR=None):
         """Plot profiles in concentration unique (µg/m3).
@@ -444,7 +630,6 @@ class PMF(object):
         :plot_save: boolean, default False. Save the graph in BDIR.
         :BDIR: string, directory to save the plot.
         """
-        import seaborn as sns
 
         if df is None:
             if self.dfBS_profile_c is None:
@@ -474,23 +659,8 @@ class PMF(object):
             BDIR = self._BDIR
 
         for p in profiles:
-            plt.figure(figsize=(12,4))
-            ax = plt.gca()
-            d = df.xs(p, level="profile") \
-                    / (df.xs(p, level="profile").loc[self.totalVar])
-            d = d.reindex(species).unstack().reset_index()
-            dref = self.dfprofiles_c[p] / self.dfprofiles_c.loc[self.totalVar, p]
-            dref = dref.reset_index()
-            sns.boxplot(data=d.replace({0: pd.np.nan}), x="level_1", y=0,
-                        color="grey", ax=ax)
-            sns.stripplot(data=dref.replace({0: pd.np.nan}), x="specie", y=p,
-                          ax=ax, jitter=False, color="red")
-            ax.set_yscale('log')
-            ax.set_xticklabels(ax.get_xticklabels(), rotation=90)
-            ax.set_ylim((10e-6,3))
-            ax.set_ylabel("µg/µg")
-            ax.set_xlabel("")
-            ax.set_title(p)
+            self._plot_per_microgramm(df, profile=p, species=species,
+                                      new_figure=True)
             plt.subplots_adjust(left=0.1, right=0.9, bottom=0.3, top=0.9)
             if plot_save: self._save_plot(DIR=BDIR, name=p+"_profile_perµg")
 
@@ -505,8 +675,6 @@ class PMF(object):
         :plot_save: boolean, default False. Save the graph in BDIR.
         :BDIR: string, directory to save the plot.
         """
-        import seaborn as sns
-        from chemutilities import format_ions
 
         if df is None:
             if self.dfBS_profile_c is None:
@@ -532,20 +700,8 @@ class PMF(object):
         for sp in species:
             sumsp[sp] = df.loc[(sp, slice(None)),:].mean(axis=1).sum()
         for p in profiles:
-            plt.figure(figsize=(12,4))
-            ax = plt.gca()
-            d = df.xs(p, level="profile").divide(sumsp.iloc[0], axis=0) * 100
-            d = d.reindex(species).unstack().reset_index()
-            dref = self.dfprofiles_c[p].divide(self.dfprofiles_c.sum(axis=1))*100
-            dref = dref.reset_index()
-            sns.barplot(data=d, x="level_1", y=0, color="grey", ci="sd", ax=ax)
-            sns.stripplot(data=dref, x="specie", y=0, color="red", jitter=False, ax=ax)
-            ax.set_xticklabels(format_ions(ax.get_xticklabels()), rotation=90)
-            ax.set_ylim((0,100))
-            ax.set_ylabel("% of total specie sum")
-            ax.set_xlabel("")
-            ax.set_title(p)
-
+            self._plot_totalspeciesum(df, profile=p, species=species,
+                                      sumsp=sumsp, new_figure=True)
             plt.subplots_adjust(left=0.1, right=0.9, bottom=0.3, top=0.9)
             if plot_save: self._save_plot(DIR=BDIR, name=p+"_profile")
 
@@ -561,14 +717,13 @@ class PMF(object):
         :plot_save: boolean, default False. Save the graph in BDIR.
         :BDIR: string, directory to save the plot.
         """
-        import seaborn as sns
 
         if (dfBS is None) and (BS):
             if self.dfBS_profile_c is None:
                 self.read_constrained_bootstrap()
             dfBS = self.dfBS_profile_c
 
-        if (dfDISP is None) and (BS):
+        if (dfDISP is None) and (DISP):
             if self.df_uncertainties_summary_c is None:
                 self.read_constrained_uncertainties_summary()
             dfDISP = self.df_uncertainties_summary_c[["DISP Min", "DISP Max"]]
@@ -598,50 +753,62 @@ class PMF(object):
         if BDIR is None:
             BDIR = self._BDIR
 
-        fill_kwarg = dict(
-            alpha=0.5,
-            edgecolor="black",
-            linewidth=0,
-        )
-        with sns.axes_style("ticks"):
-            for p in profiles:
-                plt.figure(figsize=(12, 4))
-                ax = plt.gca()
-                if BS:
-                    d = pd.DataFrame(
-                        columns=dfBS.columns,
-                        index=dfcontrib.index
-                    )
-                    for BS in dfBS.columns:
-                        d[BS] = dfcontrib[p] * dfBS.xs(p, level="profile").loc[specie][BS]
-                    mstd = d.std(axis=1)
-                    ma = d.mean(axis=1)
-                    plt.fill_between(
-                        ma.index, ma-mstd, ma+mstd,
-                        label="BS (sd)", **fill_kwarg
-                    )
-                    # d.mean(axis=1).plot(marker="*")
-                if DISP:
-                    d = pd.DataFrame(
-                        columns=dfDISP.columns,
-                        index=dfcontrib.index
-                    )
-                    for DISP in ["DISP Min", "DISP Max"]:
-                        d[DISP] = dfcontrib[p] * dfDISP.xs(p, level="profile").loc[specie][DISP]
-                    plt.fill_between(
-                        d.index, d["DISP Min"], d["DISP Max"],
-                        label="DISP (min-max)", **fill_kwarg
-                    )
-                plt.plot(
-                    dfcontrib.index, dfcontrib[p] * self.dfprofiles_c.loc[specie, p],
-                    color="#888a85", marker="*", label="Ref. run"
-                )
-                ax.set_ylabel("Contribution to {} ($µg.m^{{-3}}$)".format(specie))
-                ax.set_xlabel("")
-                ax.set_title(p)
-                ax.legend(loc="upper left", bbox_to_anchor=(1.,1.), frameon=False)
-                plt.subplots_adjust(left=0.1, right=0.85, bottom=0.1, top=0.9)
-                if plot_save: self._save_plot(DIR=BDIR, name=p+"_contribution")
+        for p in profiles:
+            self._plot_contrib(dfBS=dfBS, dfDISP=dfDISP,
+                               dfcontrib=dfcontrib, profile=p,
+                               specie=specie, BS=BS, DISP=DISP,
+                               BSDISP=BSDISP, new_figure=True)
+            plt.subplots_adjust(left=0.1, right=0.85, bottom=0.1, top=0.9)
+            if plot_save: self._save_plot(DIR=BDIR, name=p+"_contribution")
+
+    def plot_all_profiles(self, profiles=None, specie=None, BS=True, DISP=True,
+                         BSDISP=False):
+        """TODO: Docstring for plot_all_profiles.
+
+        :f: TODO
+        :profiles: TODO
+        :species: TODO
+        :returns: TODO
+
+        """
+        if profiles is None:
+            if self.profiles is None:
+                self.read_metadata()
+            profiles = self.profiles
+
+        if BS:
+            if self.dfBS_profile_c is None:
+                self.read_constrained_bootstrap()
+            dfBS = self.dfBS_profile_c
+        else:
+            dfBS = None
+
+        if DISP:
+            if self.df_uncertainties_summary_c is None:
+                self.read_constrained_uncertainties_summary()
+            dfDISP = self.df_uncertainties_summary_c[["DISP Min", "DISP Max"]]
+        else:
+            dfDISP = None
+
+        if self.dfcontrib_c is None:
+            self.read_constrained_contributions()
+        dfcontrib = self.dfcontrib_c
+
+        if self.dfprofiles_c is None:
+            self.read_constrained_profiles()
+
+        if specie is None:
+            if self.totalVar is None:
+                self.read_metadata()
+            specie = self.totalVar
+
+        for p in profiles:
+            self._plot_profile(
+                dfcontrib=dfcontrib, dfBS=dfBS, dfDISP=dfDISP, profile=p,
+                specie=specie, BS=BS, DISP=DISP, BSDISP=BSDISP
+            )
+
+
 
     def plot_seasonal_contribution(self, dfcontrib=None, dfprofiles=None, profiles=None,
             specie=None, plot_save=False, BDIR=None,
