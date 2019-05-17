@@ -1,0 +1,787 @@
+import pandas as pd
+import matplotlib.pyplot as plt
+import sqlite3
+
+
+class PMF(object):
+
+    """Docstring for PMF. """
+
+    def __init__(self, site, BDIR):
+        """Create a PMF object from the xlsx files output of EPAPMF5.
+
+        :site: str, the name of the site
+        :BDIR: str, the directory where the xlsx files live
+
+        """
+        self._site = site
+        self._BDIR = BDIR
+
+        self._basename = BDIR+site
+        self.profiles = None
+        self.nprofiles = None
+        self.species = None
+        self.nspecies = None
+        self.totalVar = None
+        self.dfprofiles_b = None
+        self.dfcontrib_b = None
+        self.dfprofiles_c = None
+        self.dfcontrib_c = None
+        self.dfBS_profile_b = None
+        self.dfBS_profile_c = None
+        self.df_disp_swap_b = None
+        self.df_disp_swap_c = None
+        self.df_uncertainties_summary_b = None
+        self.df_uncertainties_summary_c = None
+
+    def read_metadata(self):
+        """Get profiles, species and co
+        :returns: TODO
+
+        """
+        if self.dfprofiles_b is None:
+            self.read_base_profiles()
+
+        self.profiles = self.dfprofiles_b.columns.tolist()
+        self.nprofiles = len(self.profiles)
+        self.species = self.dfprofiles_b.index.tolist()
+        self.nspecies = len(self.species)
+
+        TOTALVAR = ["PM10", "PM2.5", "PMrecons"]
+        for x in TOTALVAR:
+            if x in self.species:
+                self.totalVar = x
+        if self.totalVar is None:
+            print("Warning: trying to guess total variable.")
+            self.totalVar = [x for x in self.species if "PM" in x]
+            if len(self.totalVar) >= 1:
+                print("Warning: several possible total variable: {}".format(self.totalVar))
+                print("Watning: taking the first one {}".format(self.totalVar[0]))
+            self.totalVar = self.totalVar[0]
+        print("Total variable set to: {}".format(self.totalVar))
+
+    def read_base_profiles(self):
+        """TODO: Docstring for read_base_profiles.
+
+        :returns: TODO
+
+        """
+
+        dfbase = pd.read_excel(
+                self._basename+"_base.xlsx",
+                sheet_name=['Profiles']
+                )["Profiles"]
+
+        idx = dfbase.iloc[:,0].str.contains("Factor Profiles")
+
+        dfbase = dfbase.iloc[:idx[idx==True].index[0], 1:]
+        dfbase.dropna(axis=0, how="all", inplace=True)
+        dfbase.iloc[0, 0] = "specie"
+        dfbase = dfbase\
+                .rename(columns=dfbase.iloc[0])\
+                .drop(dfbase.index[0])\
+                .set_index("specie")
+
+        # check correct number of column
+        idx = dfbase.columns.isna().argmax()
+        if idx > 0:
+            dfbase = dfbase.iloc[:, :idx]
+            dfbase.dropna(how="all", inplace=True)
+
+        self.dfprofiles_b = dfbase.infer_objects()
+
+        self.read_metadata()
+
+    def read_constrained_profiles(self):
+        """TODO: Docstring for read_constrained_profiles.
+
+        :returns: TODO
+
+        """
+        if self.profiles is None:
+            self.read_base_profiles()
+
+        dfcons = pd.read_excel(
+                    self._basename+"_Constrained.xlsx",
+                    sheet_name=['Profiles'], 
+                )["Profiles"]
+        idx = dfcons.iloc[:,0].str.contains("Factor Profiles")
+
+        dfcons = dfcons.iloc[:idx[idx==True].index[0], 1:]
+        dfcons.dropna(axis=0, how="all", inplace=True)
+
+        # check correct number of column
+        idx = dfcons.columns.isna().argmax()
+        if idx > 0:
+            dfcons = dfcons.iloc[:, :idx]
+            dfcons.dropna(how="all", inplace=True)
+        nancolumns = dfcons.isna().all()
+        if nancolumns.any():
+            dfcons = dfcons.loc[:, :nancolumns.idxmax()]
+            dfcons.dropna(axis=1, how="all", inplace=True)
+
+
+        dfcons.columns = ["specie"] + self.profiles
+        dfcons = dfcons.set_index("specie")
+        dfcons = dfcons[dfcons.index.notnull()]
+
+        self.dfprofiles_c = dfcons.infer_objects()
+
+    def read_base_contributions(self):
+        """TODO: Docstring for read_base_contributions.
+
+        :returns: TODO
+
+        """
+        if self.profiles is None:
+            self.read_base_profiles()
+
+        dfcontrib = pd.read_excel(
+                self._basename+"_base.xlsx",
+                sheet_name=['Contributions'], 
+                parse_date=["date"])["Contributions"]
+
+        try:
+            idx = dfcontrib.iloc[:,0].str.contains("Factor Contributions")
+            if idx.any():
+                dfcontrib = dfcontrib.iloc[:idx[idx==True].index[0], :]
+        except AttributeError:
+            print("WARNING: no total PM reconstructed in the file")
+
+        dfcontrib.dropna(axis=1, how="all", inplace=True)
+        dfcontrib.dropna(how="all", inplace=True)
+        dfcontrib.drop(columns=dfcontrib.columns[0], inplace=True)
+        dfcontrib.columns = ["date"] + self.profiles
+        dfcontrib.set_index("date", inplace=True)
+        dfcontrib = dfcontrib[dfcontrib.index.notnull()]
+
+        dfcontrib.replace({-999:pd.np.nan}, inplace=True)
+
+        self.dfcontrib_b = dfcontrib
+
+    def read_constrained_contributions(self):
+        """TODO: Docstring for read_constrained_contributions.
+
+        :returns: TODO
+
+        """
+        if self.profiles is None:
+            self.read_base_profiles()
+
+        dfcontrib = pd.read_excel(
+                self._basename+"_Constrained.xlsx",
+                sheet_name=['Contributions'], 
+                parse_date=["date"])["Contributions"]
+        dfcontrib.index = dfcontrib.iloc[:,0]
+        dfcontrib.drop(
+                'Factor Contributions (avg = 1) from Constrained Run (Convergent Run)',
+                inplace=True,
+                axis=1
+                )
+
+        if "Factor Contributions (conc. units) from Constrained Run (Convergent Run)" in dfcontrib.index:
+            dfcontrib = dfcontrib.loc[:"Factor Contributions (conc. units) from Constrained Run (Convergent Run)",:]
+        nancolumns = dfcontrib.isna().all()
+        if nancolumns.any():
+            dfcontrib = dfcontrib.loc[:, :nancolumns.idxmax()]
+        dfcontrib = dfcontrib[dfcontrib.index.notnull()]
+        dfcontrib.dropna(axis=0, how="all", inplace=True)
+        dfcontrib.dropna(axis=1, how="all", inplace=True)
+        dfcontrib.columns = ["date"] + self.profiles
+        dfcontrib.replace({-999:pd.np.nan}, inplace=True)
+        dfcontrib.set_index("date", inplace=True)
+
+        self.dfcontrib_c = dfcontrib
+
+    def read_base_bootstrap(self):
+        """TODO: Docstring for read_base_bootstrap.
+
+        :returns: TODO
+
+        """
+        if self.profiles is None:
+            self.read_base_profiles()
+
+        dfprofile_boot = pd.read_excel(
+                self._basename+"_boot.xlsx",
+                sheet_name=['Profiles'],
+                )["Profiles"]
+        
+        dfbootstrap_mapping_b = dfprofile_boot.iloc[1:1+self.nprofiles, 0:self.nprofiles+2]
+        dfbootstrap_mapping_b.columns = ["mapped"] + self.profiles + ["unmapped"]
+        dfbootstrap_mapping_b.set_index("mapped", inplace=True)
+        dfbootstrap_mapping_b.index = ["BF-"+f for f in self.profiles]
+
+
+
+        idx = dfprofile_boot.iloc[:, 0].str.contains("Columns are:")
+        dfprofile_boot = dfprofile_boot.iloc[idx[idx==True].index[0]+1:, 13:]
+        df = self._split_df_by_nan(dfprofile_boot)
+
+        df = pd.concat(df)
+        # handle nonconvergente BS
+        nBSconverged = dfbootstrap_mapping_b.sum(axis=1)[0]
+        nBSnotconverged = len(df.columns)-1-nBSconverged
+        if nBSnotconverged > 0:
+            print("Warging: trying to exclude non-convergente BS")
+            idxStrange = (df.loc[self.totalVar]>100)
+            colStrange = df[idxStrange]\
+                    .dropna(axis=1, how="all")\
+                    .dropna(how="all")\
+                    .columns
+            print("BS eliminated:")
+            print(df[colStrange])
+            df = df.drop(colStrange, axis=1)
+
+        # handle BS without totalVariable
+        if self.totalVar:
+            lowmass = (df.loc[self.totalVar, :] < 10**-3)
+            if lowmass.any().any():
+                print("Warning: BS with totalVar < 10**-3 encountered ({})".format(lowmass.any().sum()))
+                df = df.loc[:, ~lowmass.any()]
+        
+        self.dfBS_profile_b = df
+        self.dfbootstrap_mapping_b = dfbootstrap_mapping_b
+
+    def read_constrained_bootstrap(self):
+        """Read the '_Gcon_profile_boot.xlsx' and format it in dataframe
+
+        Add:
+        - self.dfBS_profile_c: all mapped profile
+        - self.dfbootstrap_mapping_c: table of mapped profiles
+        """
+        if self.profiles is None:
+            self.read_base_profiles()
+
+        dfprofile_boot = pd.read_excel(
+                self._basename+"_Gcon_profile_boot.xlsx",
+                sheet_name=['Profiles'],
+                )["Profiles"]
+        
+        dfbootstrap_mapping_c = dfprofile_boot.iloc[1:1+self.nprofiles, 0:self.nprofiles+2]
+        dfbootstrap_mapping_c.columns = ["mapped"] + self.profiles + ["unmapped"]
+        dfbootstrap_mapping_c.set_index("mapped", inplace=True)
+        dfbootstrap_mapping_c.index = ["BF-"+f for f in self.profiles]
+
+
+
+        idx = dfprofile_boot.iloc[:, 0].str.contains("Columns are:")
+        dfprofile_boot = dfprofile_boot.iloc[idx[idx==True].index[0]+1:, 13:]
+        df = self._split_df_by_nan(dfprofile_boot)
+
+        df = pd.concat(df)
+        # handle nonconvergente BS
+        nBSconverged = dfbootstrap_mapping_c.sum(axis=1)[0]
+        nBSnotconverged = len(df.columns)-1-nBSconverged
+        if nBSnotconverged > 0:
+            print("Warging: trying to exclude non-convergente BS")
+            idxStrange = (df.loc[self.totalVar]>100)
+            colStrange = df[idxStrange]\
+                    .dropna(axis=1, how="all")\
+                    .dropna(how="all")\
+                    .columns
+            print("BS eliminated: ", colStrange)
+            df = df.drop(colStrange, axis=1)
+
+        # handle BS without totalVariable
+        if self.totalVar:
+            lowmass = (df.loc[self.totalVar, :] < 10**-3)
+            if lowmass.any().any():
+                print("Warning: BS with totalVar < 10**-3 encountered ({})".format(lowmass.any().sum()))
+                df = df.loc[:, ~lowmass.any()]
+
+        self.dfBS_profile_c = df
+        self.dfbootstrap_mapping_c = dfbootstrap_mapping_c
+
+    def read_base_uncertainties_summary(self):
+        """Read the *_BaseErrorEstimationSummary.xlsx file
+        :returns: TODO
+
+        """
+        if self.profiles is None:
+            self.read_base_profiles()
+
+        if self.species is None:
+            self.read_base_profiles()
+
+        rawdf = pd.read_excel(
+            self._basename+"_BaseErrorEstimationSummary.xlsx",
+            sheet_name=["Error Estimation Summary"]
+            )["Error Estimation Summary"]
+        rawdf = rawdf.dropna(axis=0, how="all").reset_index().drop("index", axis=1)
+
+
+        # ==== DISP swap
+        idx = rawdf.iloc[:, 1].str.contains("Swaps").fillna(False)
+        if idx.sum() > 0:
+            df = pd.DataFrame()
+            df = rawdf.loc[idx, :]\
+                    .dropna(axis=1)\
+                    .iloc[:, 1:]\
+                    .reset_index(drop=True)
+            df.columns = self.profiles
+            df.index = ["swap count"]
+
+            self.df_disp_swap_b = df
+
+        # ==== uncertainties summary
+        # get only the correct rows
+        idx = rawdf.iloc[:, 0].str.contains("Concentrations for").astype(bool)
+        idx = rawdf.loc[idx]\
+                .iloc[:, 0]\
+                .dropna()\
+                .index
+        df = pd.DataFrame()
+        df = rawdf.loc[idx[0]+1:idx[-1]+1+self.nspecies, :]
+        idx = df.iloc[:, 0].str.contains("Specie|Concentration").astype(bool)
+        df = df.drop(idx[idx].index)
+        df = df.dropna(axis=0, how='all')
+        df["profile"] = pd.np.repeat(self.profiles, len(self.species)).tolist()
+
+        df.columns = ["specie", "Base run", 
+                "BS 5th", "BS 25th", "BS median", "BS 75th", "BS 95th", "tmp1",
+                "BS-DISP 5th", "BS-DISP average", "BS-DISP 95th", "tmp2",
+                "DISP Min", "DISP average", "DISP Max",
+                "profile"
+                ]
+        df["specie"] = self.species * len(self.profiles)
+        df.set_index(["profile", "specie"], inplace=True)
+        df.drop(["tmp1", "tmp2"], axis=1, inplace=True)
+
+        self.df_uncertainties_summary_b = df.infer_objects()
+
+    def read_constrained_uncertainties_summary(self):
+        """Read the *_ConstrainedErrorEstimationSummary.xlsx file
+        :returns: TODO
+
+        """
+        if self.profiles is None:
+            self.read_base_profiles()
+
+        if self.species is None:
+            self.read_base_profiles()
+
+        rawdf = pd.read_excel(
+            self._basename+"_ConstrainedErrorEstimationSummary.xlsx",
+            sheet_name=["Constrained Error Est. Summary"]
+            )["Constrained Error Est. Summary"]
+        rawdf = rawdf.dropna(axis=0, how="all").reset_index().drop("index", axis=1)
+
+        # ==== DISP swap
+        idx = rawdf.iloc[:, 1].str.contains("Swaps").fillna(False)
+        if idx.sum() > 0:
+            df = pd.DataFrame()
+            df = rawdf.loc[idx, :]\
+                    .dropna(axis=1)\
+                    .iloc[:, 1:]\
+                    .reset_index(drop=True)
+            df.columns = self.profiles
+            df.index = ["swap count"]
+
+            self.df_disp_swap_c = df
+
+        # ==== uncertainties summary
+        # get only the correct rows
+        idx = rawdf.iloc[:, 0].str.contains("Concentrations for").astype(bool)
+        idx = rawdf.loc[idx]\
+                .iloc[:, 0]\
+                .dropna()\
+                .index
+        df = pd.DataFrame()
+        df = rawdf.loc[idx[0]+1:idx[-1]+1+self.nspecies, :]
+        idx = df.iloc[:, 0].str.contains("Specie|Concentration").astype(bool)
+        df = df.drop(idx[idx].index)
+        df = df.dropna(axis=0, how='all')
+        df["profile"] = pd.np.repeat(self.profiles, len(self.species)).tolist()
+            
+        df.columns = ["specie", "Constrained base run", 
+                "BS 5th", "BS median", "BS 95th", "tmp1",
+                "BS-DISP 5th", "BS-DISP average", "BS-DISP 95th", "tmp2",
+                "DISP Min", "DISP average", "DISP Max",
+                "profile"
+                ]
+        df["specie"] = self.species * len(self.profiles)
+        df.set_index(["profile", "specie"], inplace=True)
+        df.drop(["tmp1", "tmp2"], axis=1, inplace=True)
+
+        self.df_uncertainties_summary_c = df.infer_objects()
+
+
+    def _split_df_by_nan(self, df):
+        """TODO: Docstring for split_df_by_nan.
+
+        :df: TODO
+        :returns: TODO
+
+        """
+        d = {}
+        dftmp = df.dropna()
+        for i, sp in enumerate(self.species):
+            d[sp] = dftmp.iloc[self.nprofiles*i:self.nprofiles*(i+1), :]
+            d[sp].index = self.profiles
+            d[sp].index.name = "profile"
+            d[sp].columns = ["Boot{}".format(i) for i in range(len(d[sp].columns))]
+        return d
+
+    def _save_plot(self, formats=["png"], name="plot", DIR=""):
+        """Save plot in a given format.
+        
+        :formats: list, format of the figure (see plt.savefig)
+        :name: string, default "plot". File name.
+        :DIR: string, default "". Directory.
+        """
+        for fmt in formats:
+            plt.savefig("{DIR}{name}.{fmt}".format(DIR=DIR, name=name, fmt=fmt))
+
+    def plot_per_microgramm(self, df=None, profiles=None, species=None,
+            plot_save=False, BDIR=None):
+        """Plot profiles in concentration unique (µg/m3).
+
+        :df: DataFrame with multiindex [species, profile] and an arbitrary
+            number of column.  Default to dfBS_profile_c.
+        :profiles: list, profile to plot (one figure per profile)
+        :species: list, specie to plot (x-axis)
+        :plot_save: boolean, default False. Save the graph in BDIR.
+        :BDIR: string, directory to save the plot.
+        """
+        import seaborn as sns
+
+        if df is None:
+            if self.dfBS_profile_c is None:
+                self.read_constrained_bootstrap()
+            df = self.dfBS_profile_c
+            if self.dfprofiles_c is None:
+                self.read_constrained_profiles()
+        elif not(isinstance(df, pd.DataFrame)):
+            raise TypeError("df should be a pandas DataFrame.")
+        
+
+        if profiles is None:
+            if self.profiles is None:
+                self.read_metadata()
+            profiles = self.profiles
+        elif not(isinstance(profiles, list)):
+            raise TypeError("profiles should be a list.")
+
+        if species is None:
+            if self.species is None:
+                self.read_metadata()
+            species = self.species
+        elif not(isinstance(species, list)):
+            raise TypeError("species should be a list.")
+
+        if BDIR is None:
+            BDIR = self._BDIR
+
+        for p in profiles:
+            plt.figure(figsize=(12,4))
+            ax = plt.gca()
+            d = df.xs(p, level="profile") \
+                    / (df.xs(p, level="profile").loc[self.totalVar])
+            d = d.reindex(species).unstack().reset_index()
+            dref = self.dfprofiles_c[p] / self.dfprofiles_c.loc[self.totalVar, p]
+            dref = dref.reset_index()
+            sns.boxplot(data=d.replace({0: pd.np.nan}), x="level_1", y=0,
+                        color="grey", ax=ax)
+            sns.stripplot(data=dref.replace({0: pd.np.nan}), x="specie", y=p,
+                          ax=ax, jitter=False, color="red")
+            ax.set_yscale('log')
+            ax.set_xticklabels(ax.get_xticklabels(), rotation=90)
+            ax.set_ylim((10e-6,3))
+            ax.set_ylabel("µg/µg")
+            ax.set_xlabel("")
+            ax.set_title(p)
+            plt.subplots_adjust(left=0.1, right=0.9, bottom=0.3, top=0.9)
+            if plot_save: self._save_plot(DIR=BDIR, name=p+"_profile_perµg")
+
+    def plot_totalspeciesum(self, df=None, profiles=None, species=None,
+            plot_save=False, BDIR=None):
+        """Plot profiles in percentage of total specie sum (%).
+
+        :df: DataFrame with multiindex [species, profile] and an arbitrary
+            number of column.  Default to dfBS_profile_c.
+        :profiles: list, profile to plot (one figure per profile)
+        :species: list, specie to plot (x-axis)
+        :plot_save: boolean, default False. Save the graph in BDIR.
+        :BDIR: string, directory to save the plot.
+        """
+        import seaborn as sns
+        from chemutilities import format_ions
+
+        if df is None:
+            if self.dfBS_profile_c is None:
+                self.read_constrained_bootstrap()
+            df = self.dfBS_profile_c
+            if self.dfprofiles_c is None:
+                self.read_constrained_profiles()
+
+        if profiles is None:
+            if self.profiles is None:
+                self.read_metadata()
+            profiles = self.profiles
+
+        if species is None:
+            if self.species is None:
+                self.read_metadata()
+            species = self.species
+
+        if BDIR is None:
+            BDIR = self._BDIR
+
+        sumsp = pd.DataFrame(columns=species, index=['sum'])
+        for sp in species:
+            sumsp[sp] = df.loc[(sp, slice(None)),:].mean(axis=1).sum()
+        for p in profiles:
+            plt.figure(figsize=(12,4))
+            ax = plt.gca()
+            d = df.xs(p, level="profile").divide(sumsp.iloc[0], axis=0) * 100
+            d = d.reindex(species).unstack().reset_index()
+            dref = self.dfprofiles_c[p].divide(self.dfprofiles_c.sum(axis=1))*100
+            dref = dref.reset_index()
+            sns.barplot(data=d, x="level_1", y=0, color="grey", ci="sd", ax=ax)
+            sns.stripplot(data=dref, x="specie", y=0, color="red", jitter=False, ax=ax)
+            ax.set_xticklabels(format_ions(ax.get_xticklabels()), rotation=90)
+            ax.set_ylim((0,100))
+            ax.set_ylabel("% of total specie sum")
+            ax.set_xlabel("")
+            ax.set_title(p)
+
+            plt.subplots_adjust(left=0.1, right=0.9, bottom=0.3, top=0.9)
+            if plot_save: self._save_plot(DIR=BDIR, name=p+"_profile")
+
+    def plot_contrib(self, dfBS=None, dfDISP=None, dfcontrib=None, profiles=None, specie=None,
+            plot_save=False, BDIR=None, BS=True, DISP=True, BSDISP=False):
+        """Plot temporal contribution in µg/m3.
+
+        :df: DataFrame with multiindex [species, profile] and an arbitrary
+            number of column.  Default to dfBS_profile_c.
+        :dfcontrib: DataFrame with profile as column and specie as index.
+        :profiles: list, profile to plot (one figure per profile)
+        :specie: string, default totalVar. specie to plot (y-axis)
+        :plot_save: boolean, default False. Save the graph in BDIR.
+        :BDIR: string, directory to save the plot.
+        """
+        import seaborn as sns
+
+        if (dfBS is None) and (BS):
+            if self.dfBS_profile_c is None:
+                self.read_constrained_bootstrap()
+            dfBS = self.dfBS_profile_c
+
+        if (dfDISP is None) and (BS):
+            if self.df_uncertainties_summary_c is None:
+                self.read_constrained_uncertainties_summary()
+            dfDISP = self.df_uncertainties_summary_c[["DISP Min", "DISP Max"]]
+
+        if dfcontrib is None:
+            if self.dfcontrib_c is None:
+                self.read_constrained_contributions()
+            dfcontrib = self.dfcontrib_c
+
+        if profiles is None:
+            if self.profiles is None:
+                self.read_metadata()
+            profiles = self.profiles
+
+        if self.dfprofiles_c is None:
+            self.read_constrained_profiles()
+
+        if specie is None:
+            if self.totalVar is None:
+                self.read_metadata()
+            specie = self.totalVar
+        elif not isinstance(specie, str):
+            raise ValueError(
+                "`specie` should be a string, got {}.".format(specie)
+            )
+
+        if BDIR is None:
+            BDIR = self._BDIR
+
+        fill_kwarg = dict(
+            alpha=0.5,
+            edgecolor="black",
+            linewidth=0,
+        )
+        with sns.axes_style("ticks"):
+            for p in profiles:
+                plt.figure(figsize=(12, 4))
+                ax = plt.gca()
+                if BS:
+                    d = pd.DataFrame(
+                        columns=dfBS.columns,
+                        index=dfcontrib.index
+                    )
+                    for BS in dfBS.columns:
+                        d[BS] = dfcontrib[p] * dfBS.xs(p, level="profile").loc[specie][BS]
+                    mstd = d.std(axis=1)
+                    ma = d.mean(axis=1)
+                    plt.fill_between(
+                        ma.index, ma-mstd, ma+mstd,
+                        label="BS (sd)", **fill_kwarg
+                    )
+                    # d.mean(axis=1).plot(marker="*")
+                if DISP:
+                    d = pd.DataFrame(
+                        columns=dfDISP.columns,
+                        index=dfcontrib.index
+                    )
+                    for DISP in ["DISP Min", "DISP Max"]:
+                        d[DISP] = dfcontrib[p] * dfDISP.xs(p, level="profile").loc[specie][DISP]
+                    plt.fill_between(
+                        d.index, d["DISP Min"], d["DISP Max"],
+                        label="DISP (min-max)", **fill_kwarg
+                    )
+                plt.plot(
+                    dfcontrib.index, dfcontrib[p] * self.dfprofiles_c.loc[specie, p],
+                    color="#888a85", marker="*", label="Ref. run"
+                )
+                ax.set_ylabel("Contribution to {} ($µg.m^{{-3}}$)".format(specie))
+                ax.set_xlabel("")
+                ax.set_title(p)
+                ax.legend(loc="upper left", bbox_to_anchor=(1.,1.), frameon=False)
+                plt.subplots_adjust(left=0.1, right=0.85, bottom=0.1, top=0.9)
+                if plot_save: self._save_plot(DIR=BDIR, name=p+"_contribution")
+
+    def plot_seasonal_contribution(self, dfcontrib=None, dfprofiles=None, profiles=None,
+            specie=None, plot_save=False, BDIR=None,
+            normalize=True, ax=None, barplot_kwarg={}):
+        """Plot the relative contribution of the profiles.
+
+        :dfcontrib: DataFrame with contribution as column and date as index.
+        :dfprofiles: DataFrame with profile as column and specie as index.
+        :profiles: list, profile to plot (one figure per profile)
+        :specie: string, default totalVar. specie to plot
+        :plot_save: boolean, default False. Save the graph in BDIR.
+        :BDIR: string, directory to save the plot.
+        :seasonal: plot contribution seasonally
+        :normalize: plot relative contribution or absolute contribution.
+        :returns: TODO
+
+        """
+        from chemutilities import get_sourceColor, get_sourcesCategories
+        from climaticdate import add_season
+
+        if dfcontrib is None:
+            if self.dfcontrib_c is None:
+                self.read_constrained_contributions()
+            dfcontrib = self.dfcontrib_c
+
+        if dfprofiles is None:
+            if self.dfprofiles_c is None:
+                self.read_constrained_profiles()
+            dfprofiles = self.dfprofiles_c
+
+        if profiles is None:
+            if self.profiles is None:
+                self.read_metadata()
+            profiles = self.profiles
+
+        if specie is None:
+            if self.totalVar is None:
+                self.read_metadata()
+            specie = self.totalVar
+
+        if BDIR is None:
+            BDIR = self._BDIR
+
+        if ax is None:
+            f, ax = plt.subplots(nrows=1, ncols=1, figsize=(7.5, 4.7))
+
+        dfcontribSeason = dfprofiles.loc[specie] * dfcontrib
+        ordered_season = ["Winter", "Spring", "Summer", "Fall", "Annual"]
+
+        c = get_sourceColor()
+        colors = c.loc["color", get_sourcesCategories(profiles)]
+
+        dfcontribSeason = add_season(dfcontribSeason, month=False)\
+                .infer_objects()
+        dfcontribSeason = dfcontribSeason.groupby("season")
+
+        if normalize:
+            df = (dfcontribSeason.sum().T / dfcontribSeason.sum().sum(axis=1))
+            df = df.T
+        else:
+            df = dfcontribSeason.mean()
+        df.loc["Annual", :] = df.mean()
+        df = df.reindex(ordered_season)
+
+        df.index = [l.replace("_"," ") for l in df.index]
+        axes = df.plot.bar(stacked=True,
+                             rot=0,
+                             color=colors,
+                             ax=ax,
+                             **barplot_kwarg)
+
+        ax.set_ylabel("Normalized contribution" if normalize else "$µg.m^{-3}$")
+        ax.legend("", frameon=False)
+        handles, labels = ax.get_legend_handles_labels()
+        ax.legend(handles[::-1], labels[::-1], loc='center left',
+                  bbox_to_anchor=(1, 0.5), frameon=False)
+        ax.set_xlabel("")
+        ax.set_title(specie)
+        plt.subplots_adjust(top=0.90, bottom=0.10, left=0.15, right=0.72)
+        
+        if plot_save: 
+            title = "_seasonal_contribution_{}".format(
+                    "normalized" if normalize else "absolute"
+                    )
+            self._save_plot(DIR=BDIR, name=self._site+title)
+        
+        return (df)
+
+    def print_base_uncertainties_summary(self, profiles=None,
+            species=None, BDIR=None):
+        """Plot the uncertainties given by BS, BS-DISP and DISP
+        :returns: TODO
+
+        """
+        import seaborn as sns
+
+        if self.df_uncertainties_summary_b is None:
+            self.read_base_uncertainties_summary()
+
+        if profiles is None:
+            if self.profiles is None:
+                self.read_metadata()
+            profiles = self.profiles
+
+        if species is None:
+            if self.species is None:
+                self.read_metadata()
+            species = self.species
+
+        if BDIR is None:
+            BDIR = self._BDIR
+
+        df = self.df_uncertainties_summary_b
+
+        return df.T.loc[:, (profiles, species)]
+
+    def print_constrained_uncertainties_summary(self, profiles=None,
+            species=None, BDIR=None):
+        """Plot the uncertainties given by BS, BS-DISP and DISP
+        :returns: TODO
+
+        """
+        import seaborn as sns
+
+        if self.df_uncertainties_summary_c is None:
+            self.read_constrained_uncertainties_summary()
+
+        if profiles is None:
+            if self.profiles is None:
+                self.read_metadata()
+            profiles = self.profiles
+
+        if species is None:
+            if self.species is None:
+                self.read_metadata()
+            species = self.species
+
+        if BDIR is None:
+            BDIR = self._BDIR
+
+        df = self.df_uncertainties_summary_c
+
+        return df.T.loc[:, (profiles, species)]
