@@ -72,13 +72,13 @@ class PMF(object):
                 sheet_name=['Profiles']
                 )["Profiles"]
 
-        idx = dfbase.iloc[:,0].str.contains("Factor Profiles")
+        idx = dfbase.iloc[:, 0].str.contains("Factor Profiles")
 
-        dfbase = dfbase.iloc[:idx[idx==True].index[0], 1:]
+        dfbase = dfbase.iloc[:idx[idx == True].index[0], 1:]
         dfbase.dropna(axis=0, how="all", inplace=True)
-        dfbase.iloc[0, 0] = "specie"
+        factor_names = list(dfbase.iloc[0, 1:])
+        dfbase.columns = ["specie"] + factor_names
         dfbase = dfbase\
-                .rename(columns=dfbase.iloc[0])\
                 .drop(dfbase.index[0])\
                 .set_index("specie")
 
@@ -105,7 +105,7 @@ class PMF(object):
                     self._basename+"_Constrained.xlsx",
                     sheet_name=['Profiles'], 
                 )["Profiles"]
-        idx = dfcons.iloc[:,0].str.contains("Factor Profiles")
+        idx = dfcons.iloc[:, 0].str.contains("Factor Profiles")
 
         dfcons = dfcons.iloc[:idx[idx==True].index[0], 1:]
         dfcons.dropna(axis=0, how="all", inplace=True)
