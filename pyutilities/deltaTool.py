@@ -60,7 +60,6 @@ def to_relativeMass(df, totalVar="PM10"):
     Normalize the profile df to the relative mass with regard to the totalVar
     (=PM10 or PM2.5).
     """
-
     dftmp = df.copy()
     if isinstance(dftmp, pd.DataFrame):
         dftmp.dropna(axis=1, how="all", inplace=True)
@@ -349,6 +348,7 @@ def plot_similarity_profile(PMF_profile, SID, PD, err="ci", plotAll=False):
     ax = plt.gca()
     maxNumber = similarity.loc[:, "n"].max()
     for p in PMF_profile.columns:
+        print(p)
         if similarity.loc[p, :].isnull().any():
             continue
         ax.errorbar(similarity.loc[p, "x"], similarity.loc[p, "y"],
@@ -359,12 +359,12 @@ def plot_similarity_profile(PMF_profile, SID, PD, err="ci", plotAll=False):
                     label=p
                    )
     plot_deltatool_pretty(ax)
-    ax.set_title('Similarity between all pair of profile')
+    ax.set_title('Similarity between all pairs of profile')
     plt.subplots_adjust(top=0.88, bottom=0.11, left=0.100, right=0.700)
     handles, labels = ax.get_legend_handles_labels()
     newLabels = []
     for l in labels:
-        newLabels.append("{l} ({n})".format(l=l, n=similarity.loc[l, "n"]))
+        newLabels.append("{l} ({n})".format(l=l.replace("_", " "), n=similarity.loc[l, "n"]))
     ax.legend(handles, newLabels, bbox_to_anchor=(1, 1), loc="upper left",
               frameon=False, fontsize=12)
     return similarity

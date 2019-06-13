@@ -762,7 +762,7 @@ class PMF(object):
             if plot_save: self._save_plot(DIR=BDIR, name=p+"_contribution")
 
     def plot_all_profiles(self, profiles=None, specie=None, BS=True, DISP=True,
-                         BSDISP=False):
+                         BSDISP=False, plot_save=False):
         """TODO: Docstring for plot_all_profiles.
 
         :f: TODO
@@ -807,6 +807,12 @@ class PMF(object):
                 dfcontrib=dfcontrib, dfBS=dfBS, dfDISP=dfDISP, profile=p,
                 specie=specie, BS=BS, DISP=DISP, BSDISP=BSDISP
             )
+            if plot_save:
+                self._save_plot(
+                    DIR=self._BDIR,
+                    name=self._site+"_"+p+"_contribution_and_profiles"
+                )
+
 
 
 

@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 
 
-def add_season(df, month=True):
+def add_season(df, month=True, month_to_season=None):
     """
     Add a season column to the DataFrame df.
 
@@ -20,9 +20,10 @@ def add_season(df, month=True):
 
     """
 
-    month_to_season = {1:'Winter', 2:'Winter', 3:'Spring', 4:'Spring', 5:'Spring', 6:'Summer',
-                       7:'Summer', 8:'Summer', 9:'Fall', 10:'Fall', 11:'Fall',
-                       12:'Winter'}
+    if month_to_season is None:
+        month_to_season = {1:'Winter', 2:'Winter', 3:'Spring', 4:'Spring', 5:'Spring', 6:'Summer',
+                           7:'Summer', 8:'Summer', 9:'Fall', 10:'Fall', 11:'Fall',
+                           12:'Winter'}
 
     dfnew = df.copy()
 
