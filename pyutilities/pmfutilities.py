@@ -69,12 +69,14 @@ class PMF(object):
 
         dfbase = pd.read_excel(
                 self._basename+"_base.xlsx",
-                sheet_name=['Profiles']
+                sheet_name=['Profiles'],
+                header=None,
                 )["Profiles"]
 
-        idx = dfbase.iloc[:, 0].str.contains("Factor Profiles")
-
-        dfbase = dfbase.iloc[:idx[idx == True].index[0], 1:]
+        idx = dfbase.iloc[:, 0].str.contains("Factor Profiles").fillna(False)
+        idx = idx[idx].index.tolist()
+        
+        dfbase = dfbase.iloc[idx[0]:idx[1], 1:]
         dfbase.dropna(axis=0, how="all", inplace=True)
         factor_names = list(dfbase.iloc[0, 1:])
         dfbase.columns = ["specie"] + factor_names
@@ -103,11 +105,14 @@ class PMF(object):
 
         dfcons = pd.read_excel(
                     self._basename+"_Constrained.xlsx",
-                    sheet_name=['Profiles'], 
+                    sheet_name=['Profiles'],
+                    header=None,
                 )["Profiles"]
-        idx = dfcons.iloc[:, 0].str.contains("Factor Profiles")
+        
+        idx = dfcons.iloc[:, 0].str.contains("Factor Profiles").fillna(False)
+        idx = idx[idx].index.tolist()
 
-        dfcons = dfcons.iloc[:idx[idx==True].index[0], 1:]
+        dfcons = dfcons.iloc[idx[0]:idx[1], 1:]
         dfcons.dropna(axis=0, how="all", inplace=True)
 
         # check correct number of column
@@ -119,7 +124,6 @@ class PMF(object):
         if nancolumns.any():
             dfcons = dfcons.loc[:, :nancolumns.idxmax()]
             dfcons.dropna(axis=1, how="all", inplace=True)
-
 
         dfcons.columns = ["specie"] + self.profiles
         dfcons = dfcons.set_index("specie")
@@ -137,9 +141,11 @@ class PMF(object):
             self.read_base_profiles()
 
         dfcontrib = pd.read_excel(
-                self._basename+"_base.xlsx",
-                sheet_name=['Contributions'], 
-                parse_date=["date"])["Contributions"]
+            self._basename+"_base.xlsx",
+            sheet_name=['Contributions'],
+            parse_date=["date"],
+            header=None,
+        )["Contributions"]
 
         try:
             idx = dfcontrib.iloc[:,0].str.contains("Factor Contributions")
@@ -169,29 +175,31 @@ class PMF(object):
             self.read_base_profiles()
 
         dfcontrib = pd.read_excel(
-                self._basename+"_Constrained.xlsx",
-                sheet_name=['Contributions'], 
-                parse_date=["date"])["Contributions"]
-        dfcontrib.index = dfcontrib.iloc[:,0]
-        dfcontrib.drop(
-                'Factor Contributions (avg = 1) from Constrained Run (Convergent Run)',
-                inplace=True,
-                axis=1
-                )
+            self._basename+"_Constrained.xlsx",
+            sheet_name=['Contributions'],
+            parse_date=["date"],
+            header=None,
+        )["Contributions"]
 
-        if "Factor Contributions (conc. units) from Constrained Run (Convergent Run)" in dfcontrib.index:
-            dfcontrib = dfcontrib.loc[:"Factor Contributions (conc. units) from Constrained Run (Convergent Run)",:]
+        idx = dfcontrib.iloc[:, 0].str.contains("Factor Contributions").fillna(False)
+        idx = idx[idx].index.tolist()
+        
+        if len(idx)>1:
+            dfcontrib = dfcontrib.iloc[idx[0]+1:idx[1], 1:]
+        else:
+            dfcontrib = dfcontrib.iloc[idx[0]+1:, 1:]
+
         nancolumns = dfcontrib.isna().all()
         if nancolumns.any():
             dfcontrib = dfcontrib.loc[:, :nancolumns.idxmax()]
-        dfcontrib = dfcontrib[dfcontrib.index.notnull()]
         dfcontrib.dropna(axis=0, how="all", inplace=True)
         dfcontrib.dropna(axis=1, how="all", inplace=True)
         dfcontrib.columns = ["date"] + self.profiles
         dfcontrib.replace({-999:pd.np.nan}, inplace=True)
         dfcontrib.set_index("date", inplace=True)
+        dfcontrib = dfcontrib[dfcontrib.index.notnull()]
 
-        self.dfcontrib_c = dfcontrib
+        self.dfcontrib_c = dfcontrib.infer_objects()
 
     def read_base_bootstrap(self):
         """TODO: Docstring for read_base_bootstrap.
@@ -203,16 +211,15 @@ class PMF(object):
             self.read_base_profiles()
 
         dfprofile_boot = pd.read_excel(
-                self._basename+"_boot.xlsx",
-                sheet_name=['Profiles'],
-                )["Profiles"]
+            self._basename+"_boot.xlsx",
+            sheet_name=['Profiles'],
+            header=None,
+        )["Profiles"]
         
         dfbootstrap_mapping_b = dfprofile_boot.iloc[1:1+self.nprofiles, 0:self.nprofiles+2]
         dfbootstrap_mapping_b.columns = ["mapped"] + self.profiles + ["unmapped"]
         dfbootstrap_mapping_b.set_index("mapped", inplace=True)
         dfbootstrap_mapping_b.index = ["BF-"+f for f in self.profiles]
-
-
 
         idx = dfprofile_boot.iloc[:, 0].str.contains("Columns are:")
         dfprofile_boot = dfprofile_boot.iloc[idx[idx==True].index[0]+1:, 13:]
@@ -254,19 +261,19 @@ class PMF(object):
             self.read_base_profiles()
 
         dfprofile_boot = pd.read_excel(
-                self._basename+"_Gcon_profile_boot.xlsx",
-                sheet_name=['Profiles'],
-                )["Profiles"]
-        
+            self._basename+"_Gcon_profile_boot.xlsx",
+            sheet_name=['Profiles'],
+        )["Profiles"]
+
         dfbootstrap_mapping_c = dfprofile_boot.iloc[1:1+self.nprofiles, 0:self.nprofiles+2]
         dfbootstrap_mapping_c.columns = ["mapped"] + self.profiles + ["unmapped"]
         dfbootstrap_mapping_c.set_index("mapped", inplace=True)
         dfbootstrap_mapping_c.index = ["BF-"+f for f in self.profiles]
 
-
-
-        idx = dfprofile_boot.iloc[:, 0].str.contains("Columns are:")
-        dfprofile_boot = dfprofile_boot.iloc[idx[idx==True].index[0]+1:, 13:]
+        idx = dfprofile_boot.iloc[:, 0].str.contains("Columns are:").fillna(False)
+        idx = idx[idx].index.tolist()
+        # 13 is the first column for BS result
+        dfprofile_boot = dfprofile_boot.iloc[idx[0]+1:, 13:]
         df = self._split_df_by_nan(dfprofile_boot)
 
         df = pd.concat(df)
@@ -306,7 +313,8 @@ class PMF(object):
 
         rawdf = pd.read_excel(
             self._basename+"_BaseErrorEstimationSummary.xlsx",
-            sheet_name=["Error Estimation Summary"]
+            sheet_name=["Error Estimation Summary"],
+            header=None,
             )["Error Estimation Summary"]
         rawdf = rawdf.dropna(axis=0, how="all").reset_index().drop("index", axis=1)
 
@@ -363,7 +371,8 @@ class PMF(object):
 
         rawdf = pd.read_excel(
             self._basename+"_ConstrainedErrorEstimationSummary.xlsx",
-            sheet_name=["Constrained Error Est. Summary"]
+            sheet_name=["Constrained Error Est. Summary"],
+            header=None,
             )["Constrained Error Est. Summary"]
         rawdf = rawdf.dropna(axis=0, how="all").reset_index().drop("index", axis=1)
 
@@ -438,7 +447,7 @@ class PMF(object):
         """
         """
         import seaborn as sns
-        from chemutilities import format_ions
+        from pyutilities.chemutilities import format_ions
 
         if new_figure:
             plt.figure(figsize=(12, 4))
@@ -468,7 +477,7 @@ class PMF(object):
     def _plot_totalspeciesum(self, df=None, profile=None, species=None,
                              sumsp=None, new_figure=False, **kwargs):
         import seaborn as sns
-        from chemutilities import format_ions
+        from pyutilities.chemutilities import format_ions
         """TODO: Docstring for _plot_totalspeciesum.
 
         :df: TODO
@@ -817,7 +826,7 @@ class PMF(object):
 
 
     def plot_seasonal_contribution(self, dfcontrib=None, dfprofiles=None, profiles=None,
-            specie=None, plot_save=False, BDIR=None,
+            specie=None, plot_save=False, BDIR=None, annual=True,
             normalize=True, ax=None, barplot_kwarg={}):
         """Plot the relative contribution of the profiles.
 
@@ -827,13 +836,15 @@ class PMF(object):
         :specie: string, default totalVar. specie to plot
         :plot_save: boolean, default False. Save the graph in BDIR.
         :BDIR: string, directory to save the plot.
-        :seasonal: plot contribution seasonally
+        :annual: plot annual contribution
         :normalize: plot relative contribution or absolute contribution.
+        
         :returns: TODO
 
         """
-        from chemutilities import get_sourceColor, get_sourcesCategories
-        from climaticdate import add_season
+        from pyutilities.chemutilities import get_sourceColor, get_sourcesCategories
+        from pyutilities.dateutilities import add_season
+        import matplotlib.ticker as mticks
 
         if dfcontrib is None:
             if self.dfcontrib_c is None:
@@ -862,7 +873,9 @@ class PMF(object):
             f, ax = plt.subplots(nrows=1, ncols=1, figsize=(7.5, 4.7))
 
         dfcontribSeason = dfprofiles.loc[specie] * dfcontrib
-        ordered_season = ["Winter", "Spring", "Summer", "Fall", "Annual"]
+        ordered_season = ["Winter", "Spring", "Summer", "Fall"]
+        if annual:
+            ordered_season.append("Annual")
 
         c = get_sourceColor()
         colors = c.loc["color", get_sourcesCategories(profiles)]
@@ -876,17 +889,23 @@ class PMF(object):
             df = df.T
         else:
             df = dfcontribSeason.mean()
-        df.loc["Annual", :] = df.mean()
+        if annual:
+            df.loc["Annual", :] = df.mean()
         df = df.reindex(ordered_season)
 
         df.index = [l.replace("_"," ") for l in df.index]
-        axes = df.plot.bar(stacked=True,
-                             rot=0,
-                             color=colors,
-                             ax=ax,
-                             **barplot_kwarg)
+        axes = df.plot.bar(
+            stacked=True,
+            rot=0,
+            color=colors,
+            ax=ax,
+            **barplot_kwarg
+        )
 
         ax.set_ylabel("Normalized contribution" if normalize else "$µg.m^{-3}$")
+        if normalize:
+            ax.set_ylim([0, 1])
+            ax.yaxis.set_major_formatter(mticks.PercentFormatter(xmax=1))
         ax.legend("", frameon=False)
         handles, labels = ax.get_legend_handles_labels()
         ax.legend(handles[::-1], labels[::-1], loc='center left',
@@ -905,9 +924,12 @@ class PMF(object):
 
     def print_base_uncertainties_summary(self, profiles=None,
             species=None, BDIR=None):
-        """Plot the uncertainties given by BS, BS-DISP and DISP
-        :returns: TODO
-
+        """Print the uncertainties given by BS, BS-DISP and DISP
+        
+        :profiles: list, list of profiles, default all profiles
+        :species: list, list of species, default all species
+        
+        :returns: pd.DataFrame, BS, DISP and BS-DISP ranges
         """
         import seaborn as sns
 
@@ -934,8 +956,11 @@ class PMF(object):
     def print_constrained_uncertainties_summary(self, profiles=None,
             species=None, BDIR=None):
         """Plot the uncertainties given by BS, BS-DISP and DISP
-        :returns: TODO
-
+        
+        :profiles: list, list of profiles, default all profiles
+        :species: list, list of species, default all species
+        
+        :returns: pd.DataFrame, BS, DISP and BS-DISP ranges
         """
         import seaborn as sns
 
