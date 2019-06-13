@@ -148,9 +148,12 @@ class PMF(object):
         )["Contributions"]
 
         try:
-            idx = dfcontrib.iloc[:,0].str.contains("Factor Contributions")
-            if idx.any():
-                dfcontrib = dfcontrib.iloc[:idx[idx==True].index[0], :]
+            idx = dfcontrib.iloc[:,0].str.contains("Factor Contributions").fillna(False)
+            idx = idx[idx].index.tolist()
+            if len(idx)>1:
+                dfcontrib = dfcontrib.iloc[idx[0]:idx[1], :]
+            else:
+                dfcontrib = dfcontrib.iloc[idx[0]+1:, 1:]
         except AttributeError:
             print("WARNING: no total PM reconstructed in the file")
 
