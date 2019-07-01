@@ -219,13 +219,16 @@ class PMF(object):
             header=None,
         )["Profiles"]
         
-        dfbootstrap_mapping_b = dfprofile_boot.iloc[1:1+self.nprofiles, 0:self.nprofiles+2]
+        dfbootstrap_mapping_b = dfprofile_boot.iloc[2:2+self.nprofiles, 0:self.nprofiles+2]
         dfbootstrap_mapping_b.columns = ["mapped"] + self.profiles + ["unmapped"]
         dfbootstrap_mapping_b.set_index("mapped", inplace=True)
         dfbootstrap_mapping_b.index = ["BF-"+f for f in self.profiles]
 
-        idx = dfprofile_boot.iloc[:, 0].str.contains("Columns are:")
-        dfprofile_boot = dfprofile_boot.iloc[idx[idx==True].index[0]+1:, 13:]
+        idx = dfprofile_boot.iloc[:, 0].str.contains("Columns are:").fillna(False)
+        idx = idx[idx].index.tolist()
+
+        # 13 is the first column for BS result
+        dfprofile_boot = dfprofile_boot.iloc[idx[0]+1:, 13:]
         df = self._split_df_by_nan(dfprofile_boot)
 
         df = pd.concat(df)
@@ -266,9 +269,10 @@ class PMF(object):
         dfprofile_boot = pd.read_excel(
             self._basename+"_Gcon_profile_boot.xlsx",
             sheet_name=['Profiles'],
+            header=None,
         )["Profiles"]
 
-        dfbootstrap_mapping_c = dfprofile_boot.iloc[1:1+self.nprofiles, 0:self.nprofiles+2]
+        dfbootstrap_mapping_c = dfprofile_boot.iloc[2:2+self.nprofiles, 0:self.nprofiles+2]
         dfbootstrap_mapping_c.columns = ["mapped"] + self.profiles + ["unmapped"]
         dfbootstrap_mapping_c.set_index("mapped", inplace=True)
         dfbootstrap_mapping_c.index = ["BF-"+f for f in self.profiles]
@@ -419,6 +423,35 @@ class PMF(object):
         self.df_uncertainties_summary_c = df.infer_objects()
 
 
+    def to_cubic_meter(self, constrained=True, specie=None, profiles=None):
+        """Convert the contribution in cubic meter for the given specie
+
+        :specie: str, the specie, default totalVar
+        :profiles: list of profile, default all profiles
+        :returns: dataframe
+
+        """
+        if specie is None:
+            specie = self.totalVar
+
+        if profiles is None:
+            profiles = self.profiles
+
+        if constrained:
+            df = self.dfcontrib_c
+            dfprofiles = self.dfprofiles_c
+        else:
+            df = self.dfcontrib_b
+            dfprofiles = self.dfprofiles_b
+
+        contrib = pd.DataFrame(index= df.index, columns=profiles)
+
+        for profile in profiles:
+            contrib[profile] = df[profile] * dfprofiles.loc[specie, profile]
+
+        return contrib
+
+
     def _split_df_by_nan(self, df):
         """TODO: Docstring for split_df_by_nan.
 
@@ -496,6 +529,7 @@ class PMF(object):
             ax = plt.gca()
         elif "ax" in kwargs:
             ax = kwargs["ax"]
+        print(ax)
 
         if sumsp is None:
             sumsp = pd.DataFrame(columns=species, index=['sum'])
@@ -506,8 +540,10 @@ class PMF(object):
         d = d.reindex(species).unstack().reset_index()
         dref = self.dfprofiles_c[profile].divide(self.dfprofiles_c.sum(axis=1))*100
         dref = dref.reset_index()
-        sns.barplot(data=d, x="level_1", y=0, color="grey", ci="sd", ax=ax)
-        sns.stripplot(data=dref, x="specie", y=0, color="red", jitter=False, ax=ax)
+        sns.barplot(data=d, x="level_1", y=0, color="grey", ci="sd", ax=ax,
+                    label="BS (sd)")
+        sns.stripplot(data=dref, x="specie", y=0, color="red", jitter=False,
+                      ax=ax, label="Ref. run")
         ax.set_xticklabels(
             format_ions([t.get_text() for t in ax.get_xticklabels()]),
             rotation=90
@@ -516,6 +552,11 @@ class PMF(object):
         ax.set_ylabel("% of total specie sum")
         ax.set_xlabel("")
         ax.set_title(profile)
+
+        h, l = ax.get_legend_handles_labels()
+        h = h[-2:]
+        l = l[-2:]
+        ax.legend(handles=h, labels=l, loc="upper left", bbox_to_anchor=(1., 1.), frameon=False)
 
     def _plot_contrib(self, dfBS=None, dfDISP=None, dfcontrib=None,
                       profile=None, specie=None, BS=True, DISP=True,
@@ -677,7 +718,7 @@ class PMF(object):
             if plot_save: self._save_plot(DIR=BDIR, name=p+"_profile_perµg")
 
     def plot_totalspeciesum(self, df=None, profiles=None, species=None,
-            plot_save=False, BDIR=None):
+            plot_save=False, BDIR=None, **kwargs):
         """Plot profiles in percentage of total specie sum (%).
 
         :df: DataFrame with multiindex [species, profile] and an arbitrary
@@ -713,12 +754,14 @@ class PMF(object):
             sumsp[sp] = df.loc[(sp, slice(None)),:].mean(axis=1).sum()
         for p in profiles:
             self._plot_totalspeciesum(df, profile=p, species=species,
-                                      sumsp=sumsp, new_figure=True)
+                                      sumsp=sumsp, **kwargs)
             plt.subplots_adjust(left=0.1, right=0.9, bottom=0.3, top=0.9)
-            if plot_save: self._save_plot(DIR=BDIR, name=p+"_profile")
+            if plot_save:
+                self._save_plot(DIR=BDIR, name=p+"_profile")
 
     def plot_contrib(self, dfBS=None, dfDISP=None, dfcontrib=None, profiles=None, specie=None,
-            plot_save=False, BDIR=None, BS=True, DISP=True, BSDISP=False):
+            plot_save=False, BDIR=None, BS=True, DISP=True, BSDISP=False,
+                     **kwargs):
         """Plot temporal contribution in µg/m3.
 
         :df: DataFrame with multiindex [species, profile] and an arbitrary
@@ -769,9 +812,10 @@ class PMF(object):
             self._plot_contrib(dfBS=dfBS, dfDISP=dfDISP,
                                dfcontrib=dfcontrib, profile=p,
                                specie=specie, BS=BS, DISP=DISP,
-                               BSDISP=BSDISP, new_figure=True)
+                               BSDISP=BSDISP, **kwargs)
             plt.subplots_adjust(left=0.1, right=0.85, bottom=0.1, top=0.9)
-            if plot_save: self._save_plot(DIR=BDIR, name=p+"_contribution")
+            if plot_save:
+                self._save_plot(DIR=BDIR, name=p+"_contribution")
 
     def plot_all_profiles(self, profiles=None, specie=None, BS=True, DISP=True,
                          BSDISP=False, plot_save=False):
@@ -825,8 +869,31 @@ class PMF(object):
                     name=self._site+"_"+p+"_contribution_and_profiles"
                 )
 
+    def plot_stacked_contribution(self, constrained=True, order=None, plot_kwargs=None):
+        """Plot a stacked plot for the contribution
 
+        :constrained: TODO
+        :returns: TODO
 
+        """
+        from pyutilities.chemutilities import get_sourceColor, get_sourcesCategories
+
+        df = self.to_cubic_meter(constrained=constrained)
+        if order:
+            if isinstance(order, list):
+                df = df.reindex(order, axis=1)
+            else:
+                df = df.reindex(sorted(df.columns), axis=1)
+        labels = df.columns
+
+        y = pd.np.vstack(df.values).T
+        colors = [
+            get_sourceColor(c) for c in get_sourcesCategories(labels)
+        ]
+        
+        fig, ax = plt.subplots()
+        ax.stackplot(df.index, y, colors=colors, labels=labels)
+        ax.legend()
 
     def plot_seasonal_contribution(self, dfcontrib=None, dfprofiles=None, profiles=None,
             specie=None, plot_save=False, BDIR=None, annual=True,
@@ -986,3 +1053,4 @@ class PMF(object):
         df = self.df_uncertainties_summary_c
 
         return df.T.loc[:, (profiles, species)]
+
