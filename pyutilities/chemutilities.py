@@ -5,7 +5,6 @@ import pandas as pd
 import seaborn as sns
 import sqlite3
 from pyutilities.dateutilities import add_season
-from adjustText import adjust_text
 
 MAPPER_METALS_NAME_TO_SYMBOLE = {
     "Potassium": "K",
