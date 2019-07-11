@@ -4,6 +4,8 @@ from matplotlib.ticker import FuncFormatter
 import pandas as pd
 import seaborn as sns
 import sqlite3
+from pyutilities.dateutilities import add_season
+from adjustText import adjust_text
 
 MAPPER_METALS_NAME_TO_SYMBOLE = {
     "Potassium": "K",
@@ -141,11 +143,11 @@ def get_sourceColor(source=None, SOURCES_like=False):
                 "Sulfate rich": "#ff2a2a",
                 "Nitrate_rich": "#217ecb", # "#ff7f2a",
                 "Nitrate rich": "#217ecb", # "#ff7f2a",
-                "Secondary inorganics": "#0000cc",
+                "Secondary_inorganics": "#0000cc",
                 "Secondary_biogenic": "#ff7f2a", # 8c564b",
                 "Secondary biogenic": "#ff7f2a", # 8c564b",
-                "Secondary_oxidation": "#0055cc",
-                "Secondary oxidation": "#0055cc",
+                "Secondary_oxidation": "#ff87dc",
+                "Secondary oxidation": "#ff87dc",
                 "Marine SOA": "#ff7f2a", # 8c564b",
                 "Biogenic SOA": "#8c564b",
                 "Anthropogenic SOA": "#8c564b",
@@ -158,7 +160,8 @@ def get_sourceColor(source=None, SOURCES_like=False):
                 "Marin": "#33b0f6",
                 "Salt": "#00b0f0",
                 "Seasalt": "#00b0f0",
-                "Sea/road salt": "#00b0f0",
+                "Sea-road salt": "#209ecc",
+                "Sea/road salt": "#209ecc",
                 "Fresh seasalt": "#00b0f0",
                 "Aged_salt": "#97bdff", #00b0f0",
                 "Aged seasalt": "#97bdff", #00b0f0",
@@ -231,6 +234,7 @@ def get_sourcesCategories(profiles):
         "Nitrate-rich": "Nitrate_rich",
         "Sulfate rich": "Sulfate_rich",
         "Nitrate rich": "Nitrate_rich",
+        "Secondary inorganics": "Secondary_inorganics",
         "Secondaire": "Secondary_biogenic",
         "Secondary bio": "Secondary_biogenic",
         "Secondary biogenic": "Secondary_biogenic",
@@ -239,6 +243,7 @@ def get_sourcesCategories(profiles):
         "Secondaire organique": "Secondary_biogenic",
         "Marine SOA": "Marine SOA",
         "Secondary biogenic/sulfate": "SOA/sulfate (Mix)",
+        "Marine SOA/SO4": "SOA/sulfate (Mix)",
         "Marine biogenic/HFO": "Marine/HFO",
         "Secondary biogenic/HFO": "Marine/HFO",
         "Marine bio/HFO": "Marine/HFO",
@@ -249,7 +254,7 @@ def get_sourcesCategories(profiles):
         "HFO": "HFO",
         "HFO (stainless)": "HFO",
         "Marin": "Secondary_biogenic",
-        "Sea/road salt": "Salt",
+        "Sea/road salt": "Sea-road salt",
         "Road salt": "Salt",
         "Sea salt": "Salt",
         "Seasalt": "Salt",
@@ -345,10 +350,7 @@ def format_ions(text):
 
 class plot():
     
-    def mainCompentOfPM(station, dateStart, dateEnd):
-        '''
-        Plot a stacked bar plot of the different constitutant of the PM
-        '''
+    def _mainComponentOfPM(dff, station):
         COLORS = {
             "OM": "#008000",
             "EC": "#000000",
@@ -391,61 +393,6 @@ class plot():
         ORGANICS = ["HULIS", "Anhydrous monosaccharides", "Polyols", "Organic acids", "Oxalate",
                     "MSA", "Glucose", "Cellulose"]
 
-        TO_GROUP = {
-            "Metals": [
-                "Al", "As", "Cd", "Cr", "Cu", "Fe", "Mn", "Mo", "Ni", "Pb", "Rb", "Sb",
-                "Se", "Sn", "Ti", "V", "Zn"
-            ],
-            "Anhydrous monosaccharides":  ["Levoglucosan", "Mannosan", "Galactosan"],
-            "Polyols":  ["Arabitol", "Sorbitol", "Mannitol"],
-            "Organic acids": [
-                "Maleic", "Succinic", "Citraconic", "Glutaric", "Oxoheptanedioic",
-                "MethylSuccinic", "Adipic", "Methylglutaric", "3-MBTCA", "Phtalic",
-                "Pinic", "Suberic", "Azelaic", "Sebacic"
-            ],
-            "Other ions": [
-                "Na+", "K+", "Mg2+",
-            ]
-        }
-
-        TO_MICROGRAMME = ["OM", "EC", "HULIS"]
-
-        conn = sqlite3.connect("/home/webersa/Documents/BdD/BdD_PM/db.sqlite")
-        df = pd.read_sql(
-            "SELECT * FROM values_all WHERE station IN ('{}');".format(station),
-            con=conn
-        )
-
-        df.date = pd.to_datetime(df.date)
-        df.set_index("date", inplace=True, drop=True)
-
-        df = df[(dateStart < df.index) & (df.index < dateEnd)]
-
-
-        # Metals = [
-        #     "Al", "As", "Ba", "Cd", "Co", "Cr", "Cs", "Cu", "Fe", "La", "Mn",
-        #     "Mo", "Ni", "Pb", "Rb", "Sb", "Se", "Sn", "Sr", "Ti", "V", "Zn"
-        # ]
-
-
-        dff = pd.DataFrame()
-        for k in TO_GROUP.keys():
-            df[k] = df[TO_GROUP[k]].sum(axis=1, min_count=1)
-        
-        # Get only the columns we have
-        dff = df.reindex(TO_GROUP.keys(), axis=1)
-        dff["OM"] = df["OC"]*1.8 
-        to_keep = ["EC", "NO3-", "NH4+", "Cl-", "SO42-", "Ca2+", "Oxalate", "MSA",
-                   "Glucose", "Cellulose", "HULIS"]
-        for k in to_keep:
-            if k in df.columns:
-                dff[k] = df[k]
-        dff.apply(pd.to_numeric)
-        
-        # Convert ng to µg
-        for i in TO_MICROGRAMME:
-            dff[i] *= 1000
-        
         # 2 dataframes: one for the 'main' components, one for the organics
         df_proportion_perday = pd.DataFrame()
         nonorganics = list(set(dff.columns)-set(ORGANICS))
@@ -529,11 +476,11 @@ class plot():
         # idx = [type(t)==matplotlib.text.Annotation for t in texts]
         # texts = texts[idx].tolist()
 
-        # adjust_text(texts["other"],
-        #             arrowprops=dict(arrowstyle="->", color='r', lw=0.5),
-        #             autoalign='', only_move={'points':'y', 'text':'y'}
-        #
-        #                                     )
+        # adjust_text(
+        #     texts["organics"],
+        #     # arrowprops=dict(arrowstyle="->", color='r', lw=0.5),
+        #     autoalign='', only_move={'points': 'y', 'text': 'y'}
+        # )
 
         yOMidentified = OMidentified * dnormalize.loc["OM", "other"]/100
         ax.annotate("{:.0f}% identified".format(OMidentified),
@@ -557,4 +504,114 @@ class plot():
         ax.legend('', frameon=False)
         ax.yaxis.set_major_formatter(FuncFormatter('{0:.0f}%'.format))
         sns.despine()
+
+
+    def mainCompentOfPM(station, dateStart, dateEnd, seasonal=False,
+                        savefig=False, savedir=None):
+        """
+        Plot a stacked bar plot of the different constitutant of the PM
+
+        Parameters
+        ----------
+
+        station : str
+            name of the station
+        dateStart, dateEnd : str
+            starting and ending date
+        seasonal : boolean, default False
+            Either to make separate graph per season
+        savefig : boolean, default False
+            Save the fig in png and pdf
+        savedir : str path, default None
+            Where to save the figures
+        """
+        TO_GROUP = {
+            "Metals": [
+                "Al", "As", "Cd", "Cr", "Cu", "Fe", "Mn", "Mo", "Ni", "Pb", "Rb", "Sb",
+                "Se", "Sn", "Ti", "V", "Zn"
+            ],
+            "Anhydrous monosaccharides":  ["Levoglucosan", "Mannosan", "Galactosan"],
+            "Polyols":  ["Arabitol", "Sorbitol", "Mannitol"],
+            "Organic acids": [
+                "Maleic", "Succinic", "Citraconic", "Glutaric", "Oxoheptanedioic",
+                "MethylSuccinic", "Adipic", "Methylglutaric", "3-MBTCA", "Phtalic",
+                "Pinic", "Suberic", "Azelaic", "Sebacic"
+            ],
+            "Other ions": [
+                "Na+", "K+", "Mg2+",
+            ]
+        }
+
+        TO_MICROGRAMME = ["OM", "EC", "HULIS"]
+
+        conn = sqlite3.connect("/home/webersa/Documents/BdD/BdD_PM/aerosols.db")
+        df = pd.read_sql(
+            "SELECT * FROM values_all WHERE station IN ('{}');".format(station),
+            con=conn
+        )
+
+        df.date = pd.to_datetime(df.date)
+        df.set_index("date", inplace=True, drop=True)
+
+        df = df[(dateStart < df.index) & (df.index < dateEnd)]
+
+        if seasonal:
+            df = add_season(df)
+
+        # Metals = [
+        #     "Al", "As", "Ba", "Cd", "Co", "Cr", "Cs", "Cu", "Fe", "La", "Mn",
+        #     "Mo", "Ni", "Pb", "Rb", "Sb", "Se", "Sn", "Sr", "Ti", "V", "Zn"
+        # ]
+
+
+        dff = pd.DataFrame()
+        for k in TO_GROUP.keys():
+            df[k] = df[TO_GROUP[k]].sum(axis=1, min_count=1)
+        
+        # Get only the columns we have
+        dff = df.reindex(TO_GROUP.keys(), axis=1)
+        dff["OM"] = df["OC"]*1.8
+        to_keep = ["EC", "NO3-", "NH4+", "Cl-", "SO42-", "Ca2+", "Oxalate", "MSA",
+                   "Glucose", "Cellulose", "HULIS"]
+        for k in to_keep:
+            if k in df.columns:
+                dff[k] = df[k]
+        dff.apply(pd.to_numeric)
+
+        if seasonal:
+            dff["season"] = df["season"]
+        
+        # Convert ng to µg
+        for i in TO_MICROGRAMME:
+            dff[i] *= 1000
+        
+        
+        DF = []
+        seasonName = []
+        if seasonal:
+            for season in df["season"].unique():
+                DF.append(dff[dff["season"] == season].drop("season", axis=1))
+                seasonName.append(season)
+        else:
+            DF = [dff]
+            seasonName = ["annual"]
+
+        for dfff, season in zip(DF, seasonName):
+            plot._mainComponentOfPM(dfff, station)
+            ax = plt.gca()
+            if season:
+                title = ax.get_title()
+                plt.title(title+" "+season)
+            if savefig:
+                plt.savefig(
+                    "{BDIR}/{station}_{temp}.png".format(
+                        BDIR=savedir, station=station, temp=season
+                    )
+                )
+                plt.savefig(
+                    "{BDIR}/{station}_{temp}.pdf".format(
+                        BDIR=savedir, station=station, temp=season
+                    )
+                )
+
 

@@ -60,6 +60,11 @@ def to_relativeMass(df, totalVar="PM10"):
     Normalize the profile df to the relative mass with regard to the totalVar
     (=PM10 or PM2.5).
     """
+    if totalVar not in df.index:
+        print("WARNING: totalVar {} not in index.".format(totalVar))
+        totalVar = df[df.index.str.contains("PM")].index[0]
+        print("Taking {}".format(totalVar))
+
     dftmp = df.copy()
     if isinstance(dftmp, pd.DataFrame):
         dftmp.dropna(axis=1, how="all", inplace=True)
@@ -126,7 +131,7 @@ def plot_deltatool_pretty(ax):
     rect = mpatch.Rectangle((0, 0),
                             width=1, height=0.4,
                             facecolor="green",
-                            alpha=0.2, zorder=-1)
+                            alpha=0.1, zorder=-1)
     ax.add_patch(rect)
     ax.set_xlim(0, 1.5)
     ax.set_ylim(0, 1)

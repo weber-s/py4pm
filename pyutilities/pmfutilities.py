@@ -476,7 +476,8 @@ class PMF(object):
         :DIR: string, default "". Directory.
         """
         for fmt in formats:
-            plt.savefig("{DIR}{name}.{fmt}".format(DIR=DIR, name=name, fmt=fmt))
+            plt.savefig("{DIR}{name}.{fmt}".format(DIR=DIR,
+                                                   name=name.replace("/", "-"), fmt=fmt))
 
     def _plot_per_microgramm(self, df=None, profile=None, species=None,
                              new_figure=False, **kwargs):
@@ -749,18 +750,21 @@ class PMF(object):
         if BDIR is None:
             BDIR = self._BDIR
 
+        new_figure = kwargs.pop("new_figure", False)
+
         sumsp = pd.DataFrame(columns=species, index=['sum'])
         for sp in species:
             sumsp[sp] = df.loc[(sp, slice(None)),:].mean(axis=1).sum()
         for p in profiles:
             self._plot_totalspeciesum(df, profile=p, species=species,
-                                      sumsp=sumsp, **kwargs)
+                                      sumsp=sumsp, new_figure=new_figure,
+                                      **kwargs)
             plt.subplots_adjust(left=0.1, right=0.9, bottom=0.3, top=0.9)
             if plot_save:
                 self._save_plot(DIR=BDIR, name=p+"_profile")
 
     def plot_contrib(self, dfBS=None, dfDISP=None, dfcontrib=None, profiles=None, specie=None,
-            plot_save=False, BDIR=None, BS=True, DISP=True, BSDISP=False,
+                     plot_save=False, BDIR=None, BS=True, DISP=True, BSDISP=False,
                      **kwargs):
         """Plot temporal contribution in µg/m3.
 
@@ -805,6 +809,8 @@ class PMF(object):
                 "`specie` should be a string, got {}.".format(specie)
             )
 
+        new_figure = kwargs.pop("new_figure", False)
+
         if BDIR is None:
             BDIR = self._BDIR
 
@@ -812,18 +818,20 @@ class PMF(object):
             self._plot_contrib(dfBS=dfBS, dfDISP=dfDISP,
                                dfcontrib=dfcontrib, profile=p,
                                specie=specie, BS=BS, DISP=DISP,
-                               BSDISP=BSDISP, **kwargs)
+                               BSDISP=BSDISP, new_figure=new_figure,
+                               **kwargs)
             plt.subplots_adjust(left=0.1, right=0.85, bottom=0.1, top=0.9)
             if plot_save:
                 self._save_plot(DIR=BDIR, name=p+"_contribution")
 
     def plot_all_profiles(self, profiles=None, specie=None, BS=True, DISP=True,
-                         BSDISP=False, plot_save=False):
+                         BSDISP=False, plot_save=False, savedir=None):
         """TODO: Docstring for plot_all_profiles.
 
         :f: TODO
         :profiles: TODO
         :species: TODO
+        :plot_save: default False
         :returns: TODO
 
         """
@@ -858,6 +866,9 @@ class PMF(object):
                 self.read_metadata()
             specie = self.totalVar
 
+        if savedir is None:
+            savedir = self._BDIR
+
         for p in profiles:
             self._plot_profile(
                 dfcontrib=dfcontrib, dfBS=dfBS, dfDISP=dfDISP, profile=p,
@@ -865,7 +876,7 @@ class PMF(object):
             )
             if plot_save:
                 self._save_plot(
-                    DIR=self._BDIR,
+                    DIR=savedir,
                     name=self._site+"_"+p+"_contribution_and_profiles"
                 )
 
