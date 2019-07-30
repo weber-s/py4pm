@@ -61,9 +61,9 @@ def to_relativeMass(df, totalVar="PM10"):
     (=PM10 or PM2.5).
     """
     if totalVar not in df.index:
-        print("WARNING: totalVar {} not in index.".format(totalVar))
+        # print("WARNING: totalVar {} not in index.".format(totalVar))
         totalVar = df[df.index.str.contains("PM")].index[0]
-        print("Taking {}".format(totalVar))
+        # print("Taking {}".format(totalVar))
 
     dftmp = df.copy()
     if isinstance(dftmp, pd.DataFrame):
@@ -293,6 +293,14 @@ def plot_similarity_profile(PMF_profile, SID, PD, err="ci", plotAll=False):
     PD :  DataFrame with index (factor, station) and column (station) : the PD matrix
     err : "ci" or "sd", the type of error for xerr and yerr.
     plotAll: boolean. Either or not plot each pair of profile.
+
+    Returns
+    -------
+    similarity : pd.DataFrame
+        columns: x, y, xerr, yerr, n
+        index: profiles
+    handles_labels: tuple of handles and labels
+        legend of the plot
     """
     from pyutilities.chemutilities import get_sourceColor
 
@@ -372,7 +380,7 @@ def plot_similarity_profile(PMF_profile, SID, PD, err="ci", plotAll=False):
         newLabels.append("{l} ({n})".format(l=l.replace("_", " "), n=similarity.loc[l, "n"]))
     ax.legend(handles, newLabels, bbox_to_anchor=(1, 1), loc="upper left",
               frameon=False, fontsize=12)
-    return similarity
+    return (similarity, (handles, newLabels))
 
 def plot_all_stations_similarity_by_source(PMF_profile):
     """

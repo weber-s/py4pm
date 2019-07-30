@@ -1,6 +1,9 @@
 import pandas as pd
 import matplotlib.pyplot as plt
+import matplotlib.ticker as mticker
 import sqlite3
+
+from pyutilities.chemutilities import get_sourceColor, get_sourcesCategories, format_ions
 
 
 class PMF(object):
@@ -148,12 +151,12 @@ class PMF(object):
         )["Contributions"]
 
         try:
-            idx = dfcontrib.iloc[:,0].str.contains("Factor Contributions").fillna(False)
+            idx = dfcontrib.iloc[:, 0].str.contains("Factor Contributions").fillna(False)
             idx = idx[idx].index.tolist()
-            if len(idx)>1:
+            if len(idx) > 1:
                 dfcontrib = dfcontrib.iloc[idx[0]:idx[1], :]
             else:
-                dfcontrib = dfcontrib.iloc[idx[0]+1:, 1:]
+                dfcontrib = dfcontrib.iloc[idx[0]+1:, :]
         except AttributeError:
             print("WARNING: no total PM reconstructed in the file")
 
@@ -164,7 +167,7 @@ class PMF(object):
         dfcontrib.set_index("date", inplace=True)
         dfcontrib = dfcontrib[dfcontrib.index.notnull()]
 
-        dfcontrib.replace({-999:pd.np.nan}, inplace=True)
+        dfcontrib.replace({-999: pd.np.nan}, inplace=True)
 
         self.dfcontrib_b = dfcontrib
 
@@ -186,8 +189,8 @@ class PMF(object):
 
         idx = dfcontrib.iloc[:, 0].str.contains("Factor Contributions").fillna(False)
         idx = idx[idx].index.tolist()
-        
-        if len(idx)>1:
+
+        if len(idx) > 1:
             dfcontrib = dfcontrib.iloc[idx[0]+1:idx[1], 1:]
         else:
             dfcontrib = dfcontrib.iloc[idx[0]+1:, 1:]
@@ -232,6 +235,7 @@ class PMF(object):
         df = self._split_df_by_nan(dfprofile_boot)
 
         df = pd.concat(df)
+        df.index.names = ["specie", "profile"]
         # handle nonconvergente BS
         nBSconverged = dfbootstrap_mapping_b.sum(axis=1)[0]
         nBSnotconverged = len(df.columns)-1-nBSconverged
@@ -284,6 +288,7 @@ class PMF(object):
         df = self._split_df_by_nan(dfprofile_boot)
 
         df = pd.concat(df)
+        df.index.names = ["specie", "profile"]
         # handle nonconvergente BS
         nBSconverged = dfbootstrap_mapping_c.sum(axis=1)[0]
         nBSnotconverged = len(df.columns)-1-nBSconverged
@@ -451,6 +456,27 @@ class PMF(object):
 
         return contrib
 
+    def get_total_specie_sum(self, constrained=True):
+        """
+        Return the total specie sum profiles in %
+
+        Parameters
+        ----------
+        constrained : boolean, default tTrue
+            use the constrained run or not
+
+        Returns
+        -------
+        df : pd.DataFrame
+            The normalized species sum per profiles
+        """
+        if constrained:
+            df = self.dfprofiles_c.copy()
+        else:
+            df = self.dfprofiles_c.copy()
+
+        df = (self.dfprofiles_c.T / self.dfprofiles_c.sum(axis=1)).T * 100
+        return df
 
     def _split_df_by_nan(self, df):
         """TODO: Docstring for split_df_by_nan.
@@ -484,7 +510,6 @@ class PMF(object):
         """
         """
         import seaborn as sns
-        from pyutilities.chemutilities import format_ions
 
         if new_figure:
             plt.figure(figsize=(12, 4))
@@ -497,7 +522,7 @@ class PMF(object):
         d = d.reindex(species).unstack().reset_index()
         dref = self.dfprofiles_c[profile] / self.dfprofiles_c.loc[self.totalVar, profile]
         dref = dref.reset_index()
-        sns.boxplot(data=d.replace({0: pd.np.nan}), x="level_1", y=0,
+        sns.boxplot(data=d.replace({0: pd.np.nan}), x="specie", y=0,
                     color="grey", ax=ax)
         sns.stripplot(data=dref.replace({0: pd.np.nan}), x="specie", y=profile,
                       ax=ax, jitter=False, color="red")
@@ -514,7 +539,6 @@ class PMF(object):
     def _plot_totalspeciesum(self, df=None, profile=None, species=None,
                              sumsp=None, new_figure=False, **kwargs):
         import seaborn as sns
-        from pyutilities.chemutilities import format_ions
         """TODO: Docstring for _plot_totalspeciesum.
 
         :df: TODO
@@ -530,7 +554,6 @@ class PMF(object):
             ax = plt.gca()
         elif "ax" in kwargs:
             ax = kwargs["ax"]
-        print(ax)
 
         if sumsp is None:
             sumsp = pd.DataFrame(columns=species, index=['sum'])
@@ -539,7 +562,7 @@ class PMF(object):
 
         d = df.xs(profile, level="profile").divide(sumsp.iloc[0], axis=0) * 100
         d = d.reindex(species).unstack().reset_index()
-        dref = self.dfprofiles_c[profile].divide(self.dfprofiles_c.sum(axis=1))*100
+        dref = self.dfprofiles_c[profile].divide(self.dfprofiles_c.sum(axis=1)) * 100
         dref = dref.reset_index()
         sns.barplot(data=d, x="level_1", y=0, color="grey", ci="sd", ax=ax,
                     label="BS (sd)")
@@ -765,7 +788,7 @@ class PMF(object):
 
     def plot_contrib(self, dfBS=None, dfDISP=None, dfcontrib=None, profiles=None, specie=None,
                      plot_save=False, BDIR=None, BS=True, DISP=True, BSDISP=False,
-                     **kwargs):
+                     new_figure=True, **kwargs):
         """Plot temporal contribution in µg/m3.
 
         :df: DataFrame with multiindex [species, profile] and an arbitrary
@@ -809,7 +832,6 @@ class PMF(object):
                 "`specie` should be a string, got {}.".format(specie)
             )
 
-        new_figure = kwargs.pop("new_figure", False)
 
         if BDIR is None:
             BDIR = self._BDIR
@@ -887,7 +909,6 @@ class PMF(object):
         :returns: TODO
 
         """
-        from pyutilities.chemutilities import get_sourceColor, get_sourcesCategories
 
         df = self.to_cubic_meter(constrained=constrained)
         if order:
@@ -923,9 +944,7 @@ class PMF(object):
         :returns: TODO
 
         """
-        from pyutilities.chemutilities import get_sourceColor, get_sourcesCategories
         from pyutilities.dateutilities import add_season
-        import matplotlib.ticker as mticks
 
         if dfcontrib is None:
             if self.dfcontrib_c is None:
@@ -953,13 +972,13 @@ class PMF(object):
         if ax is None:
             f, ax = plt.subplots(nrows=1, ncols=1, figsize=(7.5, 4.7))
 
-        dfcontribSeason = dfprofiles.loc[specie] * dfcontrib
+        dfcontribSeason = (dfprofiles.loc[specie] * dfcontrib).sort_index(axis=1)
         ordered_season = ["Winter", "Spring", "Summer", "Fall"]
         if annual:
             ordered_season.append("Annual")
 
         c = get_sourceColor()
-        colors = c.loc["color", get_sourcesCategories(profiles)]
+        colors = c.loc["color", get_sourcesCategories(dfcontribSeason.columns)]
 
         dfcontribSeason = add_season(dfcontribSeason, month=False)\
                 .infer_objects()
@@ -986,7 +1005,7 @@ class PMF(object):
         ax.set_ylabel("Normalized contribution" if normalize else "$µg.m^{-3}$")
         if normalize:
             ax.set_ylim([0, 1])
-            ax.yaxis.set_major_formatter(mticks.PercentFormatter(xmax=1))
+            ax.yaxis.set_major_formatter(mticker.PercentFormatter(xmax=1))
         ax.legend("", frameon=False)
         handles, labels = ax.get_legend_handles_labels()
         ax.legend(handles[::-1], labels[::-1], loc='center left',
@@ -1002,6 +1021,45 @@ class PMF(object):
             self._save_plot(DIR=BDIR, name=self._site+title)
         
         return (df)
+
+    def plot_stacked_profiles(self, constrained=True):
+        """plot the repartition of the species among the profiles, normalized to
+        100%
+
+        Parameters
+        ----------
+        constrained : boolean, default True
+            use the constrained run or not
+
+        Returns
+        -------
+        ax : the axe
+        """
+        df = self.get_total_specie_sum(constrained=constrained)
+
+        df = df.sort_index(axis=1)
+
+        colors = [get_sourceColor(c) for c in df.columns]
+
+        fig, ax = plt.subplots(1, 1, figsize=(12, 4))
+        df.plot(kind="bar", stacked=True, color=colors, ax=ax)
+
+        xticklabels = [t.get_text() for t in ax.get_xticklabels()]
+        ax.set_xticklabels(format_ions(xticklabels), rotation=90)
+        ax.set_xlabel("")
+
+        ax.yaxis.set_major_formatter(mticker.PercentFormatter())
+        ax.set_ylabel("Normalized contribution (%)")
+        ax.set_ylim(0, 100)
+
+        h, l = ax.get_legend_handles_labels()
+        h = reversed(h)
+        l = reversed(l)
+        ax.legend(h, l, loc="upper left", bbox_to_anchor=(1, 1), frameon=False)
+        fig.subplots_adjust(bottom=0.275, top=0.96, left=0.09, right=0.83)
+
+        return ax
+
 
     def print_base_uncertainties_summary(self, profiles=None,
             species=None, BDIR=None):
