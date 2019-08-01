@@ -478,6 +478,103 @@ class PMF(object):
         df = (self.dfprofiles_c.T / self.dfprofiles_c.sum(axis=1)).T * 100
         return df
 
+    def get_seasonal_contribution(self, specie=None, annual=True,
+                                  normalize=True, constrained=True):
+        """
+        Get a dataframe of seasonal contribution
+        """
+        from pyutilities.dateutilities import add_season
+
+        if self.dfprofiles_c is None:
+            self.read_constrained_profiles()
+        if self.dfcontrib_c is None:
+            self.read_constrained_contributions()
+        if specie is None:
+            if self.totalVar is None:
+                self.read_metadata()
+            specie = self.totalVar
+
+        dfprofiles = self.dfprofiles_c
+        dfcontrib = self.dfcontrib_c
+
+        dfcontribSeason = (dfprofiles.loc[specie] * dfcontrib).sort_index(axis=1)
+        ordered_season = ["Winter", "Spring", "Summer", "Fall"]
+        if annual:
+            ordered_season.append("Annual")
+
+        dfcontribSeason = add_season(dfcontribSeason, month=False)\
+                .infer_objects()
+        dfcontribSeason = dfcontribSeason.groupby("season")
+
+        if normalize:
+            df = (dfcontribSeason.sum().T / dfcontribSeason.sum().sum(axis=1))
+            df = df.T
+        else:
+            df = dfcontribSeason.mean()
+
+        if annual:
+            df.loc["Annual", :] = df.mean()
+
+        df = df.reindex(ordered_season)
+
+        return df
+
+
+    def recompute_new_species(self, specie=None):
+        """Recompute a specie given the other species. For instance, recompute OC
+        from OC* and a list of organic species.
+
+        It modify inplace both dfprofile_b and dfprofile_c, and update
+        self.species.
+
+        :specie: str in ["OC",]
+
+        """
+        knownSpecies = ["OC"]
+        if specie not in knownSpecies:
+            return
+
+        equivC = {
+            'Oxalate': 0.27,
+            'Arabitol': 0.40,
+            'Mannitol': 0.40,
+            'Sorbitol': 0.40,
+            'Polyols': 0.40,
+            'Levoglucosan': 0.44,
+            'Mannosan': 0.44,
+            'Galactosan': 0.44,
+            'MSA': 0.12,
+            'Glucose': 0.44,
+            'Cellulose': 0.44,
+            'Maleic': 0.41,
+            'Succinic': 0.41,
+            'Citraconic': 0.46,
+            'Glutaric': 0.45,
+            'Oxoheptanedioic': 0.48,
+            'MethylSuccinic': 0.53,
+            'Adipic': 0.49,
+            'Methylglutaric': 0.49,
+            '3-MBTCA': 0.47,
+            'Phtalic': 0.58,
+            'Pinic': 0.58,
+            'Suberic': 0.55,
+            'Azelaic': 0.57,
+            'Sebacic': 0.59,
+        }
+
+        if specie == "OC":
+            if specie not in self.species:
+                self.species.append(specie)
+            OCb = self.dfprofiles_b.loc["OC*"].copy()
+            OCc = self.dfprofiles_c.loc["OC*"].copy()
+            for sp in equivC.keys():
+                if sp in self.species:
+                    OCb += (self.dfprofiles_b.loc[sp] * equivC[sp]).infer_objects()
+                    OCc += (self.dfprofiles_c.loc[sp] * equivC[sp]).infer_objects()
+            self.dfprofiles_b.loc[specie] = OCb.infer_objects()
+            self.dfprofiles_c.loc[specie] = OCc.infer_objects()
+
+
     def _split_df_by_nan(self, df):
         """TODO: Docstring for split_df_by_nan.
 
