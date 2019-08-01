@@ -4,7 +4,7 @@ from matplotlib.ticker import FuncFormatter
 import pandas as pd
 import seaborn as sns
 import sqlite3
-from pyutilities.dateutilities import add_season
+from py4pm.dateutilities import add_season
 
 MAPPER_METALS_NAME_TO_SYMBOLE = {
     "Potassium": "K",

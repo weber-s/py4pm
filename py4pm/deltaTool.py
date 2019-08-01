@@ -14,7 +14,7 @@ import matplotlib.lines as mlines
 import matplotlib.text as mtext
 import itertools
 
-from pyutilities.chemutilities import *
+from py4pm.chemutilities import *
 
 class LegendTitle(object):
     def __init__(self, text_props=None):
@@ -302,7 +302,7 @@ def plot_similarity_profile(PMF_profile, SID, PD, err="ci", plotAll=False):
     handles_labels: tuple of handles and labels
         legend of the plot
     """
-    from pyutilities.chemutilities import get_sourceColor
+    from py4pm.chemutilities import get_sourceColor
 
     similarity = pd.DataFrame(columns=["x", "y", "xerr", "yerr", "n"],
                               index=PMF_profile.columns)

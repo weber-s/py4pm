@@ -1,14 +1,16 @@
 import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.ticker as mticker
-import sqlite3
 
-from pyutilities.chemutilities import get_sourceColor, get_sourcesCategories, format_ions
+from py4pm.chemutilities import get_sourceColor, get_sourcesCategories, format_ions
 
 
 class PMF(object):
 
-    """Docstring for PMF. """
+    """PMF are able to read file from US EPA PMF5.0 software output (in xlsx
+    format), then parse them in a more handy format (pandas DataFrame).
+    Several plot utilities are also available.
+    """
 
     def __init__(self, site, BDIR):
         """Create a PMF object from the xlsx files output of EPAPMF5.
@@ -39,7 +41,9 @@ class PMF(object):
 
     def read_metadata(self):
         """Get profiles, species and co
-        :returns: TODO
+
+        It add a totalVariable (by default one of "PM10", "PM2.5", "PMrecons" or
+        "PM10recons"]. Otherwise, try to guess.
 
         """
         if self.dfprofiles_b is None:
