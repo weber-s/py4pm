@@ -1,12 +1,12 @@
 from distutils.core import setup
 
 PACKAGES = [
-    'pyutilities',
+    'py4pm',
 ]
 
 
 setup(
-    name='pyutilities',
+    name='py4pm',
     version='0.1',
     packages=PACKAGES
 )
