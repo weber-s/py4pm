@@ -273,7 +273,7 @@ def get_sourcesCategories(profiles):
         "Biogenic": "Primary_biogenic",
         "Mineral dust": "Dust",
         "Mineral dust ": "Dust",
-        "Resuspended dust": "Dust",
+        "Resuspended dust": "Resuspended_dust",
         "Dust": "Dust",
         "Crustal dust": "Dust",
         "Dust (mineral)": "Dust",
@@ -319,6 +319,45 @@ def get_site_typology():
         site_typologie[typo] += site_typologie_SOURCES[typo]
 
     return site_typologie
+
+def get_OC_from_OC_star_and_organic(df):
+    """
+    Re-compute OC taking into account the organic species
+
+    OC = OC* + sum(eqC_sp)
+    """
+    OC = df.loc['OC*'].copy()
+    equivC = {
+        'Oxalate': 0.27,
+        'Arabitol': 0.40,
+        'Mannitol': 0.40,
+        'Sorbitol': 0.40,
+        'Polyols': 0.40,
+        'Levoglucosan': 0.44,
+        'Mannosan': 0.44,
+        'Galactosan': 0.44,
+        'MSA': 0.12,
+        'Glucose': 0.44,
+        'Cellulose': 0.44,
+        'Maleic': 0.41,
+        'Succinic': 0.41,
+        'Citraconic': 0.46,
+        'Glutaric': 0.45,
+        'Oxoheptanedioic': 0.48,
+        'MethylSuccinic': 0.53,
+        'Adipic': 0.49,
+        'Methylglutaric': 0.49,
+        '3-MBTCA': 0.47,
+        'Phtalic': 0.58,
+        'Pinic': 0.58,
+        'Suberic': 0.55,
+        'Azelaic': 0.57,
+        'Sebacic': 0.59,
+    }
+    for sp in equivC.keys():
+        if sp in df.index:
+            OC += df.loc[sp] * equivC[sp]
+    return OC
 
 
 def _format_ions(text):

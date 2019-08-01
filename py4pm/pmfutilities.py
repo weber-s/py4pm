@@ -1069,28 +1069,12 @@ class PMF(object):
         if ax is None:
             f, ax = plt.subplots(nrows=1, ncols=1, figsize=(7.5, 4.7))
 
-        dfcontribSeason = (dfprofiles.loc[specie] * dfcontrib).sort_index(axis=1)
-        ordered_season = ["Winter", "Spring", "Summer", "Fall"]
-        if annual:
-            ordered_season.append("Annual")
-
+        df = self.get_seasonal_contribution(specie=specie, normalize=normalize,
+                                            annual=annual)
         c = get_sourceColor()
-        colors = c.loc["color", get_sourcesCategories(dfcontribSeason.columns)]
+        colors = c.loc["color", get_sourcesCategories(df.columns)]
 
-        dfcontribSeason = add_season(dfcontribSeason, month=False)\
-                .infer_objects()
-        dfcontribSeason = dfcontribSeason.groupby("season")
-
-        if normalize:
-            df = (dfcontribSeason.sum().T / dfcontribSeason.sum().sum(axis=1))
-            df = df.T
-        else:
-            df = dfcontribSeason.mean()
-        if annual:
-            df.loc["Annual", :] = df.mean()
-        df = df.reindex(ordered_season)
-
-        df.index = [l.replace("_"," ") for l in df.index]
+        df.index = [l.replace("_", " ") for l in df.index]
         axes = df.plot.bar(
             stacked=True,
             rot=0,
@@ -1111,7 +1095,7 @@ class PMF(object):
         ax.set_title(specie)
         plt.subplots_adjust(top=0.90, bottom=0.10, left=0.15, right=0.72)
         
-        if plot_save: 
+        if plot_save:
             title = "_seasonal_contribution_{}".format(
                     "normalized" if normalize else "absolute"
                     )
