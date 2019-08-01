@@ -70,7 +70,9 @@ class PMF(object):
     def read_base_profiles(self):
         """TODO: Docstring for read_base_profiles.
 
-        :returns: TODO
+        Returns
+        -------
+        TODO
 
         """
 
@@ -317,8 +319,7 @@ class PMF(object):
         self.dfbootstrap_mapping_c = dfbootstrap_mapping_c
 
     def read_base_uncertainties_summary(self):
-        """Read the *_BaseErrorEstimationSummary.xlsx file
-        :returns: TODO
+        """Read the _BaseErrorEstimationSummary.xlsx file
 
         """
         if self.profiles is None:
@@ -375,8 +376,7 @@ class PMF(object):
         self.df_uncertainties_summary_b = df.infer_objects()
 
     def read_constrained_uncertainties_summary(self):
-        """Read the *_ConstrainedErrorEstimationSummary.xlsx file
-        :returns: TODO
+        """Read the _ConstrainedErrorEstimationSummary.xlsx file
 
         """
         if self.profiles is None:
@@ -435,9 +435,15 @@ class PMF(object):
     def to_cubic_meter(self, constrained=True, specie=None, profiles=None):
         """Convert the contribution in cubic meter for the given specie
 
-        :specie: str, the specie, default totalVar
-        :profiles: list of profile, default all profiles
-        :returns: dataframe
+        Parameters
+        ----------
+
+        specie : str, the specie, default totalVar
+        profiles : list of profile, default all profiles
+
+        Return
+        ------
+        df : dataframe
 
         """
         if specie is None:
@@ -466,7 +472,7 @@ class PMF(object):
 
         Parameters
         ----------
-        constrained : boolean, default tTrue
+        constrained : boolean, default True
             use the constrained run or not
 
         Returns
@@ -688,8 +694,11 @@ class PMF(object):
                       BSDISP=False, new_figure=False, **kwargs):
         """TODO: Docstring for _plot_contrib.
 
-        :dfBS: TODO
-        :dfDISP: TODO
+        Parameters
+        ----------
+
+        dfBS : pd.DataFrame
+        dfDISP: TODO
         :dfcontrib: TODO
         :profile: TODO
         :specie: TODO
@@ -892,13 +901,22 @@ class PMF(object):
                      new_figure=True, **kwargs):
         """Plot temporal contribution in µg/m3.
 
-        :df: DataFrame with multiindex [species, profile] and an arbitrary
-            number of column.  Default to dfBS_profile_c.
-        :dfcontrib: DataFrame with profile as column and specie as index.
-        :profiles: list, profile to plot (one figure per profile)
-        :specie: string, default totalVar. specie to plot (y-axis)
-        :plot_save: boolean, default False. Save the graph in BDIR.
-        :BDIR: string, directory to save the plot.
+        Parameters
+        ----------
+
+        df : pd.DataFrame, default self.dfBS_profile_c
+            DataFrame with multiindex [species, profile] and an arbitrary number
+            of column.
+        dfcontrib : pd.DataFrame, default self.dfcontrib_c
+            Profile as column and specie as index.
+        profiles : list of string, default self.profiles
+            profile to plot (one figure per profile)
+        specie : string, default totalVar.
+            specie to plot (y-axis)
+        plot_save : boolean, default False
+            Save the graph in BDIR.
+        BDIR : string
+            directory to save the plot
         """
 
         if (dfBS is None) and (BS):
@@ -951,11 +969,18 @@ class PMF(object):
                          BSDISP=False, plot_save=False, savedir=None):
         """TODO: Docstring for plot_all_profiles.
 
-        :f: TODO
-        :profiles: TODO
-        :species: TODO
-        :plot_save: default False
-        :returns: TODO
+        Parameters
+        ----------
+
+        profiles : list of string
+            Profiles to plot
+        species : ?
+        {BS, DISP, BSDISP} : boolean, default True, True, False
+            Use them as error estimation
+        plot_save : boolean, default False
+            Either or not saving the plot
+        savedir : str
+            Path to save the plot
 
         """
         if profiles is None:
