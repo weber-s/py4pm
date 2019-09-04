@@ -7,6 +7,6 @@ PACKAGES = [
 
 setup(
     name='py4pm',
-    version='0.1',
+    version='0.3',
     packages=PACKAGES
 )
