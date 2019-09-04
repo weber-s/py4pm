@@ -1,14 +1,11 @@
 import os
 import pandas as pd
 import numpy as np
-import sqlite3
-import glob
 from zipfile import ZipFile
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatch
 import scipy.stats as st
 import seaborn as sns
-import collections
 from matplotlib.colors import TABLEAU_COLORS
 import matplotlib.lines as mlines
 import matplotlib.text as mtext
@@ -27,34 +24,6 @@ class LegendTitle(object):
         handlebox.add_artist(title)
         return title
 
-# def sourcesColor(s):
-#     colors = {
-#         'Aged seasalt': "#00b0ff",
-#         'Aged seasalt/HFO': "#8c564b",
-#         'Biomass burning': "#92d050",
-#         'Dust': "#dac6a2",
-#         'Fresh seasalt': "#00b0f0",
-#         'HFO': "#70564b",
-#         'HFO (stainless)': "#8c564b",
-#         'Industries': "#7030a0",
-#         'Mineral dust': "#dac6a2",
-#         'Nitrate rich': "#ff7f2a",
-#         'Primary biogenic': "#ffc000",
-#         'Resuspended dust': "#dac6a2",
-#         'Road salt': "#00b0f0",
-#         'Road traffic': "#000000",
-#         'Seasalt': "#00b0f0",
-#         'Secondary biogenic': "#8c564b",
-#         'Secondary biogenic/HFO': "#8c564b",
-#         'Sulfate rich': "#ff2a2a",
-#         'Sulfate rich/HFO': "#ff2a2a",
-#         'Anthropogenic SOA': "#8c564b",
-#     }
-#     if s not in colors.keys():
-#         print("WARNING: no {} found in colors".format(s))
-#         return "#666666"
-#     return colors[s]
-
 def to_relativeMass(df, totalVar="PM10"):
     """
     Normalize the profile df to the relative mass with regard to the totalVar
@@ -72,54 +41,74 @@ def to_relativeMass(df, totalVar="PM10"):
     dftmp.drop(totalVar, inplace=True)
     return dftmp
 
-def compute_SID(df1, df2, source1, source2=None, isRelativeMass=True):
-    """ 
-    Compute the SID of the sources `source1` and `source2` in the profile
-    `df1`and `df2`. 
+def compute_SID(df1, df2, factor1=None, factor2=None, isRelativeMass=True):
     """
-    if not(source2):
-        source2 = source1
-    if source1 not in df1.dropna(axis=1, how="all").columns:
-        return np.nan
-    if source2 not in df2.dropna(axis=1, how="all").columns:
-        return np.nan
-    if not isRelativeMass:
-        p1 = to_relativeMass(df1.loc[:, source1])
-        p2 = to_relativeMass(df2.loc[:, source2])
+    Compute the SID of the factors `factor1` and `factor2` in the profile
+    `df1`and `df2`.
+    """
+
+    if isinstance(df1, pd.Series) and isinstance(df2, pd.Series):
+        p1 = df1
+        p2 = df2
     else:
-        p1 = df1.loc[:, source1]
-        p2 = df2.loc[:, source2]
+        if not(factor2):
+            factor2 = factor1
+
+        if factor1 not in df1.dropna(axis=1, how="all").columns:
+            return np.nan
+
+        if factor2 not in df2.dropna(axis=1, how="all").columns:
+            return np.nan
+
+        p1 = df1.loc[:, factor1]
+        p2 = df2.loc[:, factor2]
+
+    if not isRelativeMass:
+        p1 = to_relativeMass(p1)
+        p2 = to_relativeMass(p2)
+
     sp = p1.index.intersection(p2.index)
-    if len(sp)>3:
+    if len(sp) > 3:
         ID = pd.np.abs(p1[sp]-p2[sp])
         MAD = p1[sp] + p2[sp]
         SID = pd.np.sqrt(2)/len(sp) * (ID/MAD).sum()
     else:
         SID = pd.np.nan
+
     return SID
 
-def compute_PD(df1, df2, source1, source2=None, isRelativeMass=True):
+def compute_PD(df1, df2, factor1=None, factor2=None, isRelativeMass=True):
     """
-    Compute the PD of the sources `source1` and `source2` in the profile
-    `df1`and `df2`. 
+    Compute the PD of the factors `factor1` and `factor2` in the profile
+    `df1`and `df2`.
     """
-    if not(source2):
-        source2 = source1
-    if source1 not in df1.dropna(axis=1, how="all").columns:
-        return np.nan
-    if source2 not in df2.dropna(axis=1, how="all").columns:
-        return np.nan
-    if not isRelativeMass:
-        p1 = to_relativeMass(df1.loc[:, source1])
-        p2 = to_relativeMass(df2.loc[:, source2])
+
+    if isinstance(df1, pd.Series) and isinstance(df2, pd.Series):
+        p1 = df1
+        p2 = df2
     else:
-        p1 = df1.loc[:, source1]
-        p2 = df2.loc[:, source2]
-    p1.dropna(inplace=True)
-    p2.dropna(inplace=True)
+        if not(factor2):
+            factor2 = factor1
+
+        if factor1 not in df1.dropna(axis=1, how="all").columns:
+            return np.nan
+
+        if factor2 not in df2.dropna(axis=1, how="all").columns:
+            return np.nan
+
+        p1 = df1.loc[:, factor1]
+        p2 = df2.loc[:, factor2]
+
+    if not isRelativeMass:
+        p1 = to_relativeMass(p1)
+        p2 = to_relativeMass(p2)
+
+    # Remove this part (impact performance)
+    # p1.dropna(inplace=True)
+    # p2.dropna(inplace=True)
     sp = p1.index.intersection(p2.index)
-    if len(sp)>3:
-        PD = 1 - pd.np.corrcoef(p1[sp], p2[sp])[1,0]**2
+    if len(sp) > 3:
+        PD = 1 - pd.np.corrcoef(p1[sp], p2[sp])[1, 0]**2
     else:
         PD = pd.np.nan
     return PD
@@ -170,125 +159,67 @@ def plot_similarityplot(PMF_profile, station1, station2, source1, source2=None,
         )
 
     ax.plot(SID, PD, "o", **plot_kw)
-    
+
     if newFig:
         plot_deltatool_pretty(ax=ax)
 
-# def plot_similarityplot_all(PMF_profile, stationRef, stations, factors):
-#
-#     similarity = pd.DataFrame(columns=["x", "y", "xerr", "yerr", "n"],
-#                               index=factors)
-#     
-#     for p in factors:
-#         SIDtmp = pd.Series(index=stations)
-#         PDtmp = pd.Series(index=stations)
-#         for station in stations:
-#             if station == stationRef:
-#                 continue
-#             SIDtmp.loc[station] = compute_SID(
-#                 PMF_profile.loc[stationRef],
-#                 PMF_profile.loc[station],
-#                 source1=p
-#             )
-#             PDtmp.loc[station] = compute_PD(
-#                 PMF_profile.loc[stationRef],
-#                 PMF_profile.loc[station],
-#                 source1=p
-#             )
-#         SIDtmp.dropna(inplace=True)
-#         PDtmp.dropna(inplace=True)
-#         similarity.loc[p, "x"] = SIDtmp.mean()
-#         similarity.loc[p, "xerr"] = SIDtmp.mean() \
-#                 - st.t.interval(0.95, len(SIDtmp)-1,
-#                                 loc=np.mean(SIDtmp),
-#                                 scale=st.sem(SIDtmp)
-#                               )[0]
-#         similarity.loc[p, "y"] = PDtmp.mean()
-#         similarity.loc[p, "yerr"] = PDtmp.mean() \
-#                         - st.t.interval(0.95, len(PDtmp)-1,
-#                                 loc=np.mean(PDtmp),
-#                                 scale=st.sem(PDtmp)
-#                                )[0]
-#         similarity.loc[p, "n"] = SIDtmp.notnull().sum()
-#     # ---- plot part
-#     f = plt.figure(figsize=(7,5))
-#     ax = plt.gca()
-#     for p in factors:
-#         if similarity.loc[p, :].isnull().any():
-#             continue
-#         ax.errorbar(similarity.loc[p, "x"], similarity.loc[p, "y"],
-#                     fmt="o", markersize=similarity.loc[p, "n"], 
-#                     color=sourcesColor(p), alpha=0.5,
-#                     xerr=similarity.loc[p, "xerr"],
-#                     yerr=similarity.loc[p, "yerr"],
-#                     label=p
-#                    )
-#     rect = mpatch.Rectangle((0, 0), width=1, height=0.4, facecolor="green", alpha=0.1, zorder=-1)
-#     ax.add_patch(rect)
-#     ax.set_xlim(0, 1.5)
-#     ax.set_ylim(0, 1)
-#     ax.set_xlabel("SID")
-#     ax.set_ylabel("PD")
-#     ax.set_title('Similarity between {station} profiles\nand all profiles'.format(station=stationRef))
-#     plt.subplots_adjust(top=0.88, bottom=0.11, left=0.100, right=0.720)
-#     ax.legend(bbox_to_anchor=(1, 1), loc="upper left", frameon=False)
-#     return similarity
-
-def get_all_SID_PD(PMF_profile, stations, source2=None, isRelativeMass=False):
+def get_all_SID_PD(PMF_profile, stations, factor2=None, isRelativeMass=False):
     """
     Compute the SID and PD for all profiles in PMF_profile for the stations
     `stations`.
     """
-    profiles = PMF_profile.dropna(axis=1, how='all').columns
-    SID = pd.DataFrame(index=pd.MultiIndex.from_product((profiles, stations)),
-                       columns=stations)
-    PD = pd.DataFrame(index=pd.MultiIndex.from_product((profiles, stations)),
-                      columns=stations)
+    factors = PMF_profile.dropna(axis=1, how='all').columns
+    SID = pd.DataFrame(index=pd.MultiIndex.from_product((factors, stations)),
+                       columns=list(stations))
+    PD = pd.DataFrame(index=pd.MultiIndex.from_product((factors, stations)),
+                      columns=list(stations))
     MAD = pd.DataFrame()
 
     list_stations1 = []
-    if source2 is None:
-        sameSource = True
+    if factor2 is None:
+        sameFactor = True
     else:
-        sameSource = False
+        sameFactor = False
 
-    for p in profiles:
-        if sameSource:
-            source2 = p
+    for factor1 in factors:
+        if sameFactor:
+            factor2 = factor1
         else:
-            source2 = source2
-        print(p)
+            factor2 = factor2
+        print(factor1)
         for station1 in stations:
             list_stations1.append(station1)
-            if all(PMF_profile.loc[station1, p].isnull()):
+            if all(PMF_profile.loc[station1, factor1].isnull()):
                 continue
             for station2 in stations:
+                # print(station1, station2)
                 # if station2 in list_stations1:
                 #     continue
-                if all(PMF_profile.loc[station2, p].isnull()):
+                if all(PMF_profile.loc[station2, factor1].isnull()):
                     continue
-                SID.loc[(p, station1), station2] = compute_SID(
-                    PMF_profile.loc[station1, :],
-                    PMF_profile.loc[station2, :],
-                    p,
-                    source2=source2,
+                profile1 = PMF_profile.loc[station1, factor1]
+                profile2 = PMF_profile.loc[station2, factor2]
+                SID.loc[(factor1, station1), station2] = compute_SID(
+                    profile1,
+                    profile2,
+                    factor1=factor1,
+                    factor2=factor2,
                     isRelativeMass=isRelativeMass
                 )
-                PD.loc[(p, station1), station2] = compute_PD(
-                    PMF_profile.loc[station1, :],
-                    PMF_profile.loc[station2, :],
-                    p,
-                    source2=source2,
+                PD.loc[(factor1, station1), station2] = compute_PD(
+                    profile1,
+                    profile2,
+                    factor1=factor1,
+                    factor2=factor2,
                     isRelativeMass=isRelativeMass
                 )
         list_stations1 = []
     return (SID, PD)
 
-def plot_similarity_profile(PMF_profile, SID, PD, err="ci", plotAll=False):
+def plot_similarity_profile(SID, PD, err="ci", plotAll=False):
     """
-    Plot a point in the SID/PD space (+/-err) for all profile in PMF_profile.
+    Plot a point in the SID/PD space (+/-err) for all profile in SID and PD.
 
-    PMF_profile: DataFrame in long-form. Column are the PMF factors.
     SID : DataFrame with index (factor, station) and column (station) : the SID matrix
     PD :  DataFrame with index (factor, station) and column (station) : the PD matrix
     err : "ci" or "sd", the type of error for xerr and yerr.
@@ -304,54 +235,55 @@ def plot_similarity_profile(PMF_profile, SID, PD, err="ci", plotAll=False):
     """
     from py4pm.chemutilities import get_sourceColor
 
+    
+    stations = list(SID.index.get_level_values("station").unique())
+    profiles = list(SID.index.get_level_values("profile").unique())
     similarity = pd.DataFrame(columns=["x", "y", "xerr", "yerr", "n"],
-                              index=PMF_profile.columns)
-    for p in PMF_profile.columns:
+                              index=profiles)
+    for p in profiles:
         if p not in SID.index:
             continue
-        SIDtmp = SID.loc[p].dropna(axis=1, how='all').dropna(how='all')
-        keep = np.triu(np.ones(SIDtmp.shape))
-        SIDtmp = SIDtmp * keep
-        SIDtmp = SIDtmp[SIDtmp > 0]
-        SIDtmp = pd.Series(SIDtmp.values.reshape((SIDtmp.shape[0]*SIDtmp.shape[1])))
-        SIDtmp = SIDtmp.dropna()
-        PDtmp = PD.loc[p].dropna(axis=1, how='all').dropna(how='all')
-        keep = np.triu(np.ones(PDtmp.shape))
-        PDtmp = PDtmp * keep
-        PDtmp = PDtmp[PDtmp > 0]
-        PDtmp = pd.Series(PDtmp.values.reshape((PDtmp.shape[0]*PDtmp.shape[1])))
-        PDtmp = PDtmp.dropna()
+        x = SID.loc[(p, stations), stations]  # .sort_index(axis=1)
+        x = x.where(np.triu(x, k=1).astype(bool))
+        x = x.reset_index().melt(id_vars=["profile", "station"]).dropna()
+        x = x.round(3)
+        y = PD.loc[(p, stations), stations]  # .sort_index(axis=1)
+        y = y.where(np.triu(y, k=1).astype(bool))
+        y = y.reset_index().melt(id_vars=["profile", "station"]).dropna()
+        y = y.round(3)
 
-        similarity.loc[p, "x"] = SIDtmp.mean()
-        similarity.loc[p, "y"] = PDtmp.mean()
+        similarity.loc[p, "x"] = x["value"].mean()
+        similarity.loc[p, "y"] = y["value"].mean()
         if err == "ci":
-            similarity.loc[p, "xerr"] = SIDtmp.mean() \
-                    - st.t.interval(0.95, len(SIDtmp)-1,
-                                    loc=np.mean(SIDtmp),
-                                    scale=st.sem(SIDtmp)
-                                   )[0]
-            similarity.loc[p, "yerr"] = PDtmp.mean() \
-                    - st.t.interval(0.95, len(PDtmp)-1,
-                                    loc=np.mean(PDtmp),
-                                    scale=st.sem(PDtmp)
-                                   )[0]
+            similarity.loc[p, "xerr"] = x["value"].mean() \
+                    - st.t.interval(
+                        0.95, len(x["value"])-1,
+                        loc=np.mean(x["value"]),
+                        scale=st.sem(x["value"])
+                    )[0]
+            similarity.loc[p, "yerr"] = y["value"].mean() \
+                    - st.t.interval(
+                        0.95, len(y["value"])-1,
+                        loc=np.mean(y["value"]),
+                        scale=st.sem(y["value"])
+                    )[0]
         elif err == "sd":
-            similarity.loc[p, "xerr"] = SIDtmp.std()
-            similarity.loc[p, "yerr"] = PDtmp.std()
+            similarity.loc[p, "xerr"] = x["value"].std()
+            similarity.loc[p, "yerr"] = y["value"].std()
 
-        similarity.loc[p, "n"] = SIDtmp.notnull().sum()
+        similarity.loc[p, "n"] = x["value"].notnull().sum()
 
         if plotAll:
             f = plt.figure(figsize=(7, 5))
             ax = plt.gca()
-            ax.plot(SID.loc[p], PD.loc[p], "o", color=get_sourceColor(p))
-            ax.set_title(p)                                       
+            ax.plot(x["value"], y["value"], "o", color=get_sourceColor(p))
+            ax.set_title(p)
             plot_deltatool_pretty(ax)
-            # ax.set_xlabel("SID")                                          
-            # ax.set_ylabel("PD") 
+            # ax.set_xlabel("SID")
+            # ax.set_ylabel("PD")
             # rect = mpatch.Rectangle((0, 0), width=1, height=0.4, facecolor="green", alpha=0.1, zorder=-1)
-            # ax.add_patch(rect)                                                                           
-            # ax.set_xlim(0, 1.5)                                                                          
+            # ax.add_patch(rect)
+            # ax.set_xlim(0, 1.5)
             # ax.set_ylim(0, 1)
             plt.savefig("distance_all_profile_{p}.png".format(
                 p=p.replace(" ", "-").replace("/", "-")
@@ -360,12 +292,12 @@ def plot_similarity_profile(PMF_profile, SID, PD, err="ci", plotAll=False):
     f = plt.figure(figsize=(8,5))
     ax = plt.gca()
     maxNumber = similarity.loc[:, "n"].max()
-    for p in PMF_profile.columns:
+    for p in profiles:
         print(p)
         if similarity.loc[p, :].isnull().any():
             continue
         ax.errorbar(similarity.loc[p, "x"], similarity.loc[p, "y"],
-                    fmt="o", markersize=14*similarity.loc[p, "n"]/maxNumber, 
+                    fmt="o", markersize=14*similarity.loc[p, "n"]/maxNumber,
                     color=get_sourceColor(p), alpha=0.5,
                     xerr=similarity.loc[p, "xerr"],
                     yerr=similarity.loc[p, "yerr"],
@@ -434,7 +366,7 @@ def plot_relativeMass(PMF_profile, source="Biomass burning",
             "NO3-", "SO42-", "NH4+", "Na+", "K+", "Ca2+", "Mg2+", "Cl-",
             "Polyols", "Fe", "Al", "Levoglucosan", "Mannosan", "MSA"
         ]
-        keep_index2 = []#"MSA"] 
+        keep_index2 = []#"MSA"]
         keep_index2tmp = list(set(keep_index) - set(keep_index1) - set(["PM10",
             "Mg2+"]))
         keep_index2tmp.sort()
@@ -496,7 +428,7 @@ def plot_relativeMass(PMF_profile, source="Biomass burning",
                 j += 1
 
         # sns.swarmplot(data=dd, x="specie", y="value", color=".2", alpha=0.5, size=4,
-        #              ax=axes[i]) 
+        #              ax=axes[i])
     if naxe == 1:
         axes[0].set_ylim([1e-5,2])
     else:
@@ -508,7 +440,7 @@ def plot_relativeMass(PMF_profile, source="Biomass burning",
             ax.set_xlabel("")
             for tick in ax.get_xticklabels():
                 tick.set_rotation(90)
-            # ax.legend(loc="center", 
+            # ax.legend(loc="center",
             #           ncol=(len(dfperµg.columns))//2,
             #           bbox_to_anchor=(0.5, -.55),
             #           frameon=False)
@@ -588,6 +520,27 @@ def save4deltaTool(contrib, profile):
                 zip.write(file)
         for file in list_files:
             os.remove(file)
+
+def get_profile_from_PMF(pmfs):
+    """Get a profile matrix from a list of PMF object
+
+    :pmfs: TODO
+    :returns: TODO
+
+    """
+    profiles = pd.DataFrame()
+    for pmf in pmfs:
+        dftmp = pmf.to_relative_mass()
+        possible_sources = {
+            p: get_sourcesCategories([p])[0]
+            for p in dftmp.columns
+        }
+        dftmp.rename(columns=possible_sources, inplace=True)
+        dftmp.sort_index(axis=1, inplace=True)
+        dftmp["station"] = pmf._site+"_"+pmf._program
+        profiles = pd.concat([profiles, dftmp])
+    return profiles
+
 
 ## TO ADAPT! ==================================================================
 # conn = sqlite3.connect("/home/webersa/Documents/BdD/BdD_PM/db.sqlite")
