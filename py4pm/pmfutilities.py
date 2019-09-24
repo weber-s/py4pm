@@ -1,7 +1,6 @@
 import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.ticker as mticker
-
 from py4pm.chemutilities import get_sourceColor, get_sourcesCategories, format_ions
 
 class CachedAccessor:
@@ -42,7 +41,7 @@ class ReaderAccessor():
         """Get profiles, species and co
 
         It add a totalVariable (by default one of "PM10", "PM2.5", "PMrecons" or
-        "PM10recons"]. Otherwise, try to guess.
+        "PM10recons", "PM10rec"]. Otherwise, try to guess.
 
         """
         pmf = self._parent
@@ -54,7 +53,7 @@ class ReaderAccessor():
         pmf.species = pmf.dfprofiles_b.index.tolist()
         pmf.nspecies = len(pmf.species)
 
-        TOTALVAR = ["PM10", "PM2.5", "PMrecons"]
+        TOTALVAR = ["PM10", "PM2.5", "PMrecons", "PM10rec", "PM10recons"]
         for x in TOTALVAR:
             if x in pmf.species:
                 pmf.totalVar = x

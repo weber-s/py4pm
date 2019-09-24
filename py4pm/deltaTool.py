@@ -270,6 +270,8 @@ def plot_similarity_profile(SID, PD, err="ci", plotAll=False):
         elif err == "sd":
             similarity.loc[p, "xerr"] = x["value"].std()
             similarity.loc[p, "yerr"] = y["value"].std()
+        similarity.loc[:, "xerr"] = similarity.loc[:, "xerr"].fillna(0)
+        similarity.loc[:, "yerr"] = similarity.loc[:, "yerr"].fillna(0)
 
         similarity.loc[p, "n"] = x["value"].notnull().sum()
 
