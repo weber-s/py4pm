@@ -99,9 +99,10 @@ class ReaderAccessor():
             dfbase = dfbase.iloc[:, :idx]
             dfbase.dropna(how="all", inplace=True)
         # avoid 10**-12 possible concentration...
+        dfbase = dfbase.infer_objects()
         dfbase[dfbase < 10e-6] = 0
 
-        pmf.dfprofiles_b = dfbase.infer_objects()
+        pmf.dfprofiles_b = dfbase
 
         pmf.read.read_metadata()
 
@@ -142,9 +143,10 @@ class ReaderAccessor():
         dfcons = dfcons.set_index("specie")
         dfcons = dfcons[dfcons.index.notnull()]
         # avoid 10**-12 possible concentration...
+        dfcons = dfcons.infer_objects()
         dfcons[dfcons < 10e-6] = 0
 
-        pmf.dfprofiles_c = dfcons.infer_objects()
+        pmf.dfprofiles_c = dfcons
 
     def read_base_contributions(self):
         """TODO: Docstring for read_base_contributions.
