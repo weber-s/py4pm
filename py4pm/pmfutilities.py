@@ -1312,6 +1312,28 @@ class PMF(object):
 
         return df
 
+    def replace_totalVar(self, newTotalVar):
+        """replace the total var to all dataframe
+
+        :newTotalVar: TODO
+        :returns: TODO
+
+        """
+        DF = [
+            self.dfprofiles_b,
+            self.dfprofiles_c,
+            self.dfBS_profile_b,
+            self.dfBS_profile_c,
+            self.df_uncertainties_summary_b,
+            self.df_uncertainties_summary_c,
+        ]
+        for df in DF:
+            if df is None:
+                continue
+            df.rename({self.totalVar: newTotalVar}, inplace=True, axis=0)
+
+        self.species = [newTotalVar if x == self.totalVar else x for x in self.species]
+        self.totalVar = newTotalVar
 
     def recompute_new_species(self, specie=None):
         """Recompute a specie given the other species. For instance, recompute OC
