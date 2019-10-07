@@ -471,7 +471,7 @@ class PlotterAccessor():
             plt.savefig("{DIR}{name}.{fmt}".format(DIR=DIR,
                                                    name=name.replace("/", "-"), fmt=fmt))
 
-    def _plot_per_microgramm(self, df=None, profile=None, species=None,
+    def _plot_per_microgramm(self, constrained=True, df=None, profile=None, species=None,
                              new_figure=False, **kwargs):
         """
         """
@@ -484,10 +484,15 @@ class PlotterAccessor():
         elif "ax" in kwargs:
             ax = kwargs["ax"]
 
+        if constrained:
+            dfprofiles = pmf.dfprofiles_c
+        else:
+            dfprofiles = pmf.dfprofiles_b
+
         d = df.xs(profile, level="profile") \
                 / (df.xs(profile, level="profile").loc[pmf.totalVar])
         d = d.reindex(species).unstack().reset_index()
-        dref = pmf.dfprofiles_c[profile] / pmf.dfprofiles_c.loc[pmf.totalVar, profile]
+        dref = dfprofiles[profile] / dfprofiles.loc[pmf.totalVar, profile]
         dref = dref.reset_index()
         sns.boxplot(data=d.replace({0: pd.np.nan}), x="specie", y=0,
                     color="grey", ax=ax)
@@ -503,12 +508,21 @@ class PlotterAccessor():
         ax.set_xlabel("")
         ax.set_title(profile)
 
-    def _plot_totalspeciesum(self, df=None, profile=None, species=None,
-                             sumsp=None, new_figure=False, **kwargs):
+        #Create custom artists
+        refArtist = plt.Line2D((0, 1),(0, 0), color='red', marker='o', linestyle='')
+        BSArtist = plt.Rectangle((0, 0), 0, 0, color="grey")
+        handles = [refArtist, BSArtist]
+        labels = ["Ref. run", "BS"]
+        ax.legend(handles=handles, labels=labels, loc="upper left", bbox_to_anchor=(1., 1.), frameon=False)
+
+    def _plot_totalspeciesum(self, constrained=True, df=None, profile=None,
+                             species=None, sumsp=None, new_figure=False,
+                             **kwargs):
         import seaborn as sns
         """TODO: Docstring for _plot_totalspeciesum.
 
         :df: TODO
+        :constrained: Boolean, either to use the constrained run or the base run
         :profile: TODO
         :species: TODO
         :sumsp: dataframe with the sum of each species
@@ -524,6 +538,11 @@ class PlotterAccessor():
         elif "ax" in kwargs:
             ax = kwargs["ax"]
 
+        if constrained:
+            dfprofiles = pmf.dfprofiles_c
+        else:
+            dfprofiles = pmf.dfprofiles_b
+
         if sumsp is None:
             sumsp = pd.DataFrame(columns=species, index=['sum'])
             for sp in species:
@@ -531,7 +550,7 @@ class PlotterAccessor():
 
         d = df.xs(profile, level="profile").divide(sumsp.iloc[0], axis=0) * 100
         d = d.reindex(species).unstack().reset_index()
-        dref = pmf.dfprofiles_c[profile].divide(pmf.dfprofiles_c.sum(axis=1)) * 100
+        dref = dfprofiles[profile].divide(dfprofiles.sum(axis=1)) * 100
         dref = dref.reset_index()
         sns.barplot(data=d, x="level_1", y=0, color="grey", ci="sd", ax=ax,
                     label="BS (sd)")
@@ -551,7 +570,7 @@ class PlotterAccessor():
         l = l[-2:]
         ax.legend(handles=h, labels=l, loc="upper left", bbox_to_anchor=(1., 1.), frameon=False)
 
-    def _plot_contrib(self, dfBS=None, dfDISP=None, dfcontrib=None,
+    def _plot_contrib(self, constrained=True, dfBS=None, dfDISP=None, dfcontrib=None,
                       profile=None, specie=None, BS=True, DISP=True,
                       BSDISP=False, new_figure=False, **kwargs):
         """TODO: Docstring for _plot_contrib.
@@ -579,6 +598,11 @@ class PlotterAccessor():
             ax = plt.gca()
         elif "ax" in kwargs:
             ax = kwargs["ax"]
+
+        if constrained:
+            dfprofiles = pmf.dfprofiles_c
+        else:
+            dfprofiles = pmf.dfprofiles_b
 
         fill_kwarg = dict(
             alpha=0.5,
@@ -612,7 +636,7 @@ class PlotterAccessor():
                     label="DISP (min-max)", **fill_kwarg
                 )
             plt.plot(
-                dfcontrib.index, dfcontrib[profile] * pmf.dfprofiles_c.loc[specie, profile],
+                dfcontrib.index, dfcontrib[profile] * dfprofiles.loc[specie, profile],
                 color="#888a85", marker="*", label="Ref. run"
             )
             ax.set_ylabel("Contribution to {} ($µg.m^{{-3}}$)".format(specie))
@@ -620,10 +644,11 @@ class PlotterAccessor():
             ax.set_title(profile)
             ax.legend(loc="upper left", bbox_to_anchor=(1., 1.), frameon=False)
 
-    def _plot_profile(self, dfcontrib=None, dfBS=None, dfDISP=None, profile=None,
+    def _plot_profile(self, constrained=True, dfcontrib=None, dfBS=None, dfDISP=None, profile=None,
                       specie=None, BS=False, DISP=False, BSDISP=False):
         """TODO: Docstring for _plot_profile.
 
+        :constrained: Boolean, either to use the constrained run or the base one
         :dfcontrib: TODO
         :dfprofile: TODO
         :profile: TODO
@@ -639,16 +664,17 @@ class PlotterAccessor():
         fig, axes = plt.subplots(nrows=3, ncols=1, figsize=(12, 12))
         axes[0].get_shared_x_axes().join(axes[0], axes[1])
         self._plot_per_microgramm(
-            dfBS, profile=profile, species=pmf.species,
+            df=dfBS, constrained=constrained, profile=profile, species=pmf.species,
             new_figure=False, ax=axes[0]
         )
 
         self._plot_totalspeciesum(
-            dfBS, profile=profile, species=pmf.species,
+            df=dfBS, constrained=constrained, profile=profile, species=pmf.species,
             new_figure=False, ax=axes[1]
         )
 
         self._plot_contrib(
+            constrained=constrained,
             dfcontrib=dfcontrib,
             dfBS=dfBS, dfDISP=dfDISP,
             BS=BS, DISP=DISP,
@@ -671,12 +697,13 @@ class PlotterAccessor():
             wspace=0.015
         )
 
-    def plot_per_microgramm(self, df=None, profiles=None, species=None,
+    def plot_per_microgramm(self, df=None, constrained=True, profiles=None, species=None,
             plot_save=False, BDIR=None):
         """Plot profiles in concentration unique (µg/m3).
 
         :df: DataFrame with multiindex [species, profile] and an arbitrary
             number of column.  Default to dfBS_profile_c.
+        :constrained: Boolean, either to use the constrained run or the base run
         :profiles: list, profile to plot (one figure per profile)
         :species: list, specie to plot (x-axis)
         :plot_save: boolean, default False. Save the graph in BDIR.
@@ -685,11 +712,18 @@ class PlotterAccessor():
         pmf = self._parent
 
         if df is None:
-            if pmf.dfBS_profile_c is None:
-                pmf.read.read_constrained_bootstrap()
-            df = pmf.dfBS_profile_c
-            if pmf.dfprofiles_c is None:
-                pmf.read.read_constrained_profiles()
+            if constrained:
+                if pmf.dfBS_profile_c is None:
+                    pmf.read.read_constrained_bootstrap()
+                df = pmf.dfBS_profile_c
+                if pmf.dfprofiles_c is None:
+                    pmf.read.read_constrained_profiles()
+            else:
+                if pmf.dfBS_profile_b is None:
+                    pmf.read.read_base_bootstrap()
+                df = pmf.dfBS_profile_b
+                if pmf.dfprofiles_b is None:
+                    pmf.read.read_base_profiles()
         elif not(isinstance(df, pd.DataFrame)):
             raise TypeError("df should be a pandas DataFrame.")
         
@@ -712,13 +746,14 @@ class PlotterAccessor():
             BDIR = pmf._BDIR
 
         for p in profiles:
-            self._plot_per_microgramm(df, profile=p, species=species,
+            self._plot_per_microgramm(df, constrained=constrained, profile=p, species=species,
                                       new_figure=True)
             plt.subplots_adjust(left=0.1, right=0.9, bottom=0.3, top=0.9)
             if plot_save: self._save_plot(DIR=BDIR, name=p+"_profile_perµg")
 
     def plot_totalspeciesum(self, df=None, profiles=None, species=None,
-            plot_save=False, BDIR=None, **kwargs):
+                            constrained=True,
+                            plot_save=False, BDIR=None, **kwargs):
         """Plot profiles in percentage of total specie sum (%).
 
         :df: DataFrame with multiindex [species, profile] and an arbitrary
@@ -731,11 +766,18 @@ class PlotterAccessor():
         pmf = self._parent
 
         if df is None:
-            if pmf.dfBS_profile_c is None:
-                pmf.read.read_constrained_bootstrap()
-            df = pmf.dfBS_profile_c
-            if pmf.dfprofiles_c is None:
-                pmf.read.read_constrained_profiles()
+            if constrained:
+                if pmf.dfBS_profile_c is None:
+                    pmf.read.read_constrained_bootstrap()
+                df = pmf.dfBS_profile_c
+                if pmf.dfprofiles_c is None:
+                    pmf.read.read_constrained_profiles()
+            else:
+                if pmf.dfBS_profile_b is None:
+                    pmf.read.read_base_bootstrap()
+                df = pmf.dfBS_profile_b
+                if pmf.dfprofiles_b is None:
+                    pmf.read.read_base_profiles()
 
         if profiles is None:
             if pmf.profiles is None:
@@ -764,6 +806,7 @@ class PlotterAccessor():
                 self._save_plot(DIR=BDIR, name=p+"_profile")
 
     def plot_contrib(self, dfBS=None, dfDISP=None, dfcontrib=None, profiles=None, specie=None,
+                     constrained=True,
                      plot_save=False, BDIR=None, BS=True, DISP=True, BSDISP=False,
                      new_figure=True, **kwargs):
         """Plot temporal contribution in µg/m3.
@@ -788,27 +831,42 @@ class PlotterAccessor():
         pmf = self._parent
 
         if (dfBS is None) and (BS):
-            if pmf.dfBS_profile_c is None:
-                pmf.read.read_constrained_bootstrap()
-            dfBS = pmf.dfBS_profile_c
+            if constrained:
+                if pmf.dfBS_profile_c is None:
+                    pmf.read.read_constrained_bootstrap()
+                dfBS = pmf.dfBS_profile_c
+            else:
+                if pmf.dfBS_profile_b is None:
+                    pmf.read.read_base_bootstrap()
+                dfBS = pmf.dfBS_profile_b
 
         if (dfDISP is None) and (DISP):
-            if pmf.df_uncertainties_summary_c is None:
-                pmf.read.read_constrained_uncertainties_summary()
-            dfDISP = pmf.df_uncertainties_summary_c[["DISP Min", "DISP Max"]]
+            if constrained:
+                if pmf.df_uncertainties_summary_c is None:
+                    pmf.read.read_constrained_uncertainties_summary()
+                dfDISP = pmf.df_uncertainties_summary_c[["DISP Min", "DISP Max"]]
+            else:
+                if pmf.df_uncertainties_summary_b is None:
+                    pmf.read.read_base_uncertainties_summary()
+                dfDISP = pmf.df_uncertainties_summary_b[["DISP Min", "DISP Max"]]
 
         if dfcontrib is None:
-            if pmf.dfcontrib_c is None:
-                pmf.read.read_constrained_contributions()
-            dfcontrib = pmf.dfcontrib_c
+            if constrained:
+                if pmf.dfcontrib_c is None:
+                    pmf.read.read_constrained_contributions()
+                dfcontrib = pmf.dfcontrib_c
+            else:
+                if pmf.dfcontrib_b is None:
+                    pmf.read.read_base_contributions()
+                dfcontrib = pmf.dfcontrib_b
 
         if profiles is None:
             if pmf.profiles is None:
                 pmf.read.read_metadata()
             profiles = pmf.profiles
 
-        if pmf.dfprofiles_c is None:
-            pmf.read.read_constrained_profiles()
+        # if pmf.dfprofiles_c is None:
+        #     pmf.read.read_constrained_profiles()
 
         if specie is None:
             if pmf.totalVar is None:
@@ -819,27 +877,29 @@ class PlotterAccessor():
                 "`specie` should be a string, got {}.".format(specie)
             )
 
-
         if BDIR is None:
             BDIR = pmf._BDIR
 
         for p in profiles:
             self._plot_contrib(dfBS=dfBS, dfDISP=dfDISP,
-                               dfcontrib=dfcontrib, profile=p,
-                               specie=specie, BS=BS, DISP=DISP,
+                               dfcontrib=dfcontrib, constrained=constrained,
+                               profile=p, specie=specie, BS=BS, DISP=DISP,
                                BSDISP=BSDISP, new_figure=new_figure,
                                **kwargs)
             plt.subplots_adjust(left=0.1, right=0.85, bottom=0.1, top=0.9)
             if plot_save:
                 self._save_plot(DIR=BDIR, name=p+"_contribution")
 
-    def plot_all_profiles(self, profiles=None, specie=None, BS=True, DISP=True,
-                         BSDISP=False, plot_save=False, savedir=None):
+    def plot_all_profiles(self, constrained=True, profiles=None, specie=None,
+                          BS=True, DISP=True, BSDISP=False, plot_save=False,
+                          savedir=None):
         """TODO: Docstring for plot_all_profiles.
 
         Parameters
         ----------
 
+        constrained: Boolean, default True
+            Either to use the constrained run or the base one
         profiles : list of string
             Profiles to plot
         species : ?
@@ -859,25 +919,44 @@ class PlotterAccessor():
             profiles = pmf.profiles
 
         if BS:
-            if pmf.dfBS_profile_c is None:
-                pmf.read.read_constrained_bootstrap()
-            dfBS = pmf.dfBS_profile_c
+            if constrained:
+                if pmf.dfBS_profile_c is None:
+                    pmf.read.read_constrained_bootstrap()
+                dfBS = pmf.dfBS_profile_c
+            else:
+                if pmf.dfBS_profile_b is None:
+                    pmf.read.read_base_bootstrap()
+                dfBS = pmf.dfBS_profile_b
         else:
             dfBS = None
 
         if DISP:
-            if pmf.df_uncertainties_summary_c is None:
-                pmf.read.read_constrained_uncertainties_summary()
-            dfDISP = pmf.df_uncertainties_summary_c[["DISP Min", "DISP Max"]]
+            if constrained:
+                if pmf.df_uncertainties_summary_c is None:
+                    pmf.read.read_constrained_uncertainties_summary()
+                dfDISP = pmf.df_uncertainties_summary_c[["DISP Min", "DISP Max"]]
+            else:
+                if pmf.df_uncertainties_summary_b is None:
+                    pmf.read.read_base_uncertainties_summary()
+                dfDISP = pmf.df_uncertainties_summary_b[["DISP Min", "DISP Max"]]
         else:
             dfDISP = None
 
-        if pmf.dfcontrib_c is None:
-            pmf.read.read_constrained_contributions()
-        dfcontrib = pmf.dfcontrib_c
+        if constrained:
+            if pmf.dfcontrib_c is None:
+                pmf.read.read_constrained_contributions()
+            dfcontrib = pmf.dfcontrib_c
+        else:
+            if pmf.dfcontrib_b is None:
+                pmf.read.read_base_contributions()
+            dfcontrib = pmf.dfcontrib_b
 
-        if pmf.dfprofiles_c is None:
-            pmf.read.read_constrained_profiles()
+        if constrained:
+            if pmf.dfprofiles_c is None:
+                pmf.read.read_constrained_profiles()
+        else:
+            if pmf.dfprofiles_b is None:
+                pmf.read.read_base_profiles()
 
         if specie is None:
             if pmf.totalVar is None:
@@ -889,7 +968,7 @@ class PlotterAccessor():
 
         for p in profiles:
             self._plot_profile(
-                dfcontrib=dfcontrib, dfBS=dfBS, dfDISP=dfDISP, profile=p,
+                constrained=constrained, dfcontrib=dfcontrib, dfBS=dfBS, dfDISP=dfDISP, profile=p,
                 specie=specie, BS=BS, DISP=DISP, BSDISP=BSDISP
             )
             if plot_save:
@@ -922,9 +1001,19 @@ class PlotterAccessor():
         
         fig, ax = plt.subplots()
         ax.stackplot(df.index, y, colors=colors, labels=labels)
-        ax.legend()
+        ax.set_ylabel(pmf.totalVar + "$\mu g/ m^{-3}$")
+        ax.set_ylim(0, ax.get_ylim()[1])
+        ax.legend(frameon=False, loc="upper left", bbox_to_anchor=(1., 1.))
+        plt.subplots_adjust(
+            top=0.961,
+            bottom=0.081,
+            left=0.037,
+            right=0.887,
+            hspace=0.2,
+            wspace=0.2
+        )
 
-    def plot_seasonal_contribution(self, dfcontrib=None, dfprofiles=None, profiles=None,
+    def plot_seasonal_contribution(self, constrained=True, dfcontrib=None, dfprofiles=None, profiles=None,
             specie=None, plot_save=False, BDIR=None, annual=True,
             normalize=True, ax=None, barplot_kwarg={}):
         """Plot the relative contribution of the profiles.
@@ -945,14 +1034,24 @@ class PlotterAccessor():
         pmf = self._parent
 
         if dfcontrib is None:
-            if pmf.dfcontrib_c is None:
-                pmf.read.read_constrained_contributions()
-            dfcontrib = pmf.dfcontrib_c
+            if constrained:
+                if pmf.dfcontrib_c is None:
+                    pmf.read.read_constrained_contributions()
+                dfcontrib = pmf.dfcontrib_c
+            else:
+                if pmf.dfcontrib_b is None:
+                    pmf.read.read_base_contributions()
+                dfcontrib = pmf.dfcontrib_b
 
         if dfprofiles is None:
-            if pmf.dfprofiles_c is None:
-                pmf.read.read_constrained_profiles()
-            dfprofiles = pmf.dfprofiles_c
+            if constrained:
+                if pmf.dfprofiles_c is None:
+                    pmf.read.read_constrained_profiles()
+                dfprofiles = pmf.dfprofiles_c
+            else:
+                if pmf.dfprofiles_b is None:
+                    pmf.read.read_base_profiles()
+                dfprofiles = pmf.dfprofiles_b
 
         if profiles is None:
             if pmf.profiles is None:
@@ -971,7 +1070,8 @@ class PlotterAccessor():
             f, ax = plt.subplots(nrows=1, ncols=1, figsize=(7.5, 4.7))
 
         df = pmf.get_seasonal_contribution(specie=specie, normalize=normalize,
-                                            annual=annual)
+                                            annual=annual,
+                                           constrained=constrained)
         c = get_sourceColor()
         colors = c.loc["color", get_sourcesCategories(df.columns)]
 
@@ -1156,9 +1256,10 @@ class PMF(object):
         if constrained:
             df = self.dfprofiles_c.copy()
         else:
-            df = self.dfprofiles_c.copy()
+            df = self.dfprofiles_b.copy()
 
-        df = (self.dfprofiles_c.T / self.dfprofiles_c.sum(axis=1)).T * 100
+        # df = (self.dfprofiles_c.T / self.dfprofiles_c.sum(axis=1)).T * 100
+        df = (df.T / df.sum(axis=1)).T * 100
         return df
 
     def get_seasonal_contribution(self, specie=None, annual=True,
@@ -1168,17 +1269,26 @@ class PMF(object):
         """
         from py4pm.dateutilities import add_season
 
-        if self.dfprofiles_c is None:
-            self.read_constrained_profiles()
-        if self.dfcontrib_c is None:
-            self.read_constrained_contributions()
+        if constrained:
+            if self.dfprofiles_c is None:
+                self.read.read_constrained_profiles()
+            if self.dfcontrib_c is None:
+                self.read.read_constrained_contributions()
+            dfprofiles = self.dfprofiles_c
+            dfcontrib = self.dfcontrib_c
+        else:
+            if self.dfprofiles_b is None:
+                self.read.read_base_profiles()
+            if self.dfcontrib_b is None:
+                self.read.read_base_contributions()
+            dfprofiles = self.dfprofiles_b
+            dfcontrib = self.dfcontrib_b
+
         if specie is None:
             if self.totalVar is None:
-                self.read_metadata()
+                self.read.read_metadata()
             specie = self.totalVar
 
-        dfprofiles = self.dfprofiles_c
-        dfcontrib = self.dfcontrib_c
 
         dfcontribSeason = (dfprofiles.loc[specie] * dfcontrib).sort_index(axis=1)
         ordered_season = ["Winter", "Spring", "Summer", "Fall"]
