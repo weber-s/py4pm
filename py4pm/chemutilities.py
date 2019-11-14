@@ -77,6 +77,8 @@ def replace_QL(dftmp, species=None, conn=None):
 def get_sourceColor(source=None):
     color = {
         "Traffic": "#000000",
+        "Traffic 1": "#000000",
+        "Traffic 2": "#102262",
         "Road traffic": "#000000",
         "Primary traffic": "#000000",
         "Traffic_ind": "#000000",
@@ -111,6 +113,7 @@ def get_sourceColor(source=None):
         "HFO (stainless)": "#70564b",
         "Oil": "#70564b",
         "Vanadium rich": "#70564b",
+        "Cadmium rich": "#70564b",
         "Marine": "#33b0f6",
         "Marin": "#33b0f6",
         "Salt": "#00b0f0",
@@ -174,6 +177,8 @@ def get_sourcesCategories(profiles):
         "Vanadium rich": "Vanadium rich",
         "Road traffic/oil combustion": "Traffic",
         "Traffic": "Road traffic",
+        "Traffic 1": "Traffic 1",
+        "Traffic 2": "Traffic 2",
         "Primary traffic": "Road traffic",
         "Road traffic": "Road traffic",
         "Road trafic": "Road traffic",
@@ -245,6 +250,7 @@ def get_sourcesCategories(profiles):
         "Industry/vehicular": "Industry/traffic",
         "Industry/traffic": "Industry/traffic",
         "Industries/trafic": "Industry/traffic",
+        "Cadmium rich": "Cadmium rich",
         "Fioul lourd": "HFO",
         "Arcellor": "Industrial",
         "Siderurgie": "Industrial",
@@ -262,7 +268,8 @@ def get_site_typology():
     site_typologie["Urban"] = ["Talence", "Lyon", "Poitiers", "Nice", "MRS-5av",
                                "PdB", "Aix-en-provence", "Nogent", "Poitiers",
                                "Lens-2011-2012", "Lens-2013-2014", "Lens", "Rouen"]
-    site_typologie["Valley"] = ["Chamonix", "Passy", "Marnaz", "GRE-cb", "VIF", "GRE-fr"]
+    site_typologie["Valley"] = ["Chamonix", "Passy", "Marnaz", "GRE-cb", "VIF",
+                                "GRE-fr", "Passy_decombio"]
     site_typologie["Traffic"] = ["Roubaix", "STG-cle"]
     site_typologie["Rural"] = ["Revin", "Peyrusse", "ANDRA-PM10", "ANDRA-PM2.5"]
 
