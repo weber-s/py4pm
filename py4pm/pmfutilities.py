@@ -179,8 +179,8 @@ class ReaderAccessor():
         dfcontrib.dropna(axis=1, how="all", inplace=True)
         dfcontrib.dropna(how="all", inplace=True)
         dfcontrib.drop(columns=dfcontrib.columns[0], inplace=True)
-        dfcontrib.columns = ["date"] + pmf.profiles
-        dfcontrib.set_index("date", inplace=True)
+        dfcontrib.columns = ["Date"] + pmf.profiles
+        dfcontrib.set_index("Date", inplace=True)
         dfcontrib = dfcontrib[dfcontrib.index.notnull()]
 
         dfcontrib.replace({-999: pd.np.nan}, inplace=True)
@@ -218,9 +218,9 @@ class ReaderAccessor():
             dfcontrib = dfcontrib.loc[:, :nancolumns.idxmax()]
         dfcontrib.dropna(axis=0, how="all", inplace=True)
         dfcontrib.dropna(axis=1, how="all", inplace=True)
-        dfcontrib.columns = ["date"] + pmf.profiles
+        dfcontrib.columns = ["Date"] + pmf.profiles
         dfcontrib.replace({-999:pd.np.nan}, inplace=True)
-        dfcontrib.set_index("date", inplace=True)
+        dfcontrib.set_index("Date", inplace=True)
         dfcontrib = dfcontrib[dfcontrib.index.notnull()]
 
         pmf.dfcontrib_c = dfcontrib.infer_objects()
@@ -1207,7 +1207,7 @@ class PMF(object):
             df = self.dfcontrib_b
             dfprofiles = self.dfprofiles_b
 
-        contrib = pd.DataFrame(index= df.index, columns=profiles)
+        contrib = pd.DataFrame(index=df.index, columns=profiles)
 
         for profile in profiles:
             contrib[profile] = df[profile] * dfprofiles.loc[specie, profile]

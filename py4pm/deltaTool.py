@@ -103,6 +103,11 @@ def compute_PD(df1, df2, factor1=None, factor2=None, isRelativeMass=True):
         p1 = to_relativeMass(p1)
         p2 = to_relativeMass(p2)
 
+    if p1.index.str.contains("PM").any():
+        p1 = p1.loc[~p1.index.str.contains("PM")]
+    if p2.index.str.contains("PM").any():
+        p2 = p2.loc[~p2.index.str.contains("PM")]
+
     # Remove this part (impact performance)
     # p1.dropna(inplace=True)
     # p2.dropna(inplace=True)
