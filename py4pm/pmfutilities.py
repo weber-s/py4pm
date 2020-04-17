@@ -6,6 +6,7 @@ from py4pm.chemutilities import get_sourceColor, get_sourcesCategories, format_i
 class CachedAccessor:
      """
      Custom property-like object (descriptor) for caching accessors.
+
      Parameters
      ----------
      name : str
@@ -67,11 +68,10 @@ class ReaderAccessor():
         print("Total variable set to: {}".format(pmf.totalVar))
 
     def read_base_profiles(self):
-        """TODO: Docstring for read_base_profiles.
+        """Read the "base" profiles result from the file: '_base.xlsx',
+        sheet "Profiles", and add :
 
-        Returns
-        -------
-        TODO
+        - self.dfprofiles_b: constrained factors profile
 
         """
         pmf = self._parent
@@ -107,9 +107,10 @@ class ReaderAccessor():
         pmf.read.read_metadata()
 
     def read_constrained_profiles(self):
-        """TODO: Docstring for read_constrained_profiles.
+        """Read the "constrained" profiles result from the file: '_Constrained.xlsx',
+        sheet "Profiles", and add :
 
-        :returns: TODO
+        - self.dfprofiles_c: constrained factors profile
 
         """
         pmf = self._parent
@@ -149,9 +150,10 @@ class ReaderAccessor():
         pmf.dfprofiles_c = dfcons
 
     def read_base_contributions(self):
-        """TODO: Docstring for read_base_contributions.
+        """Read the "base" contributions result from the file: '_base.xlsx',
+        sheet "Contributions", and add :
 
-        :returns: TODO
+        - self.dfcontrib_b: base factors contribution
 
         """
         pmf = self._parent
@@ -188,9 +190,10 @@ class ReaderAccessor():
         pmf.dfcontrib_b = dfcontrib
 
     def read_constrained_contributions(self):
-        """TODO: Docstring for read_constrained_contributions.
+        """Read the "constrained" contributions result from the file: '_Constrained.xlsx',
+        sheet "Contributions", and add :
 
-        :returns: TODO
+        - self.dfcontrib_c: constrained factors contribution
 
         """
         pmf = self._parent
@@ -226,9 +229,11 @@ class ReaderAccessor():
         pmf.dfcontrib_c = dfcontrib.infer_objects()
 
     def read_base_bootstrap(self):
-        """TODO: Docstring for read_base_bootstrap.
+        """Read the "base" bootstrap result from the file: '_boot.xlsx'
+        and add :
 
-        :returns: TODO
+        - self.dfBS_profile_b: all mapped profile
+        - self.dfbootstrap_mapping_b: table of mapped profiles
 
         """
         pmf = self._parent
@@ -281,11 +286,12 @@ class ReaderAccessor():
         pmf.dfbootstrap_mapping_b = dfbootstrap_mapping_b
 
     def read_constrained_bootstrap(self):
-        """Read the '_Gcon_profile_boot.xlsx' and format it in dataframe
+        """Read the "base" bootstrap result from the file: '_Gcon_profile_boot.xlsx'
+        and add :
 
-        Add:
         - self.dfBS_profile_c: all mapped profile
         - self.dfbootstrap_mapping_c: table of mapped profiles
+
         """
         pmf = self._parent
 
@@ -335,7 +341,9 @@ class ReaderAccessor():
         pmf.dfbootstrap_mapping_c = dfbootstrap_mapping_c
 
     def read_base_uncertainties_summary(self):
-        """Read the _BaseErrorEstimationSummary.xlsx file
+        """Read the _BaseErrorEstimationSummary.xlsx file and add:
+
+        - self.df_uncertainties_summary_b : uncertainties from BS, DISP and BS-DISP
 
         """
         pmf = self._parent
@@ -394,7 +402,9 @@ class ReaderAccessor():
         pmf.df_uncertainties_summary_b = df.infer_objects()
 
     def read_constrained_uncertainties_summary(self):
-        """Read the _ConstrainedErrorEstimationSummary.xlsx file
+        """Read the _ConstrainedErrorEstimationSummary.xlsx file and add :
+
+        - self.df_uncertainties_summary_b : uncertainties from BS, DISP and BS-DISP
 
         """
         pmf = self._parent
@@ -463,9 +473,12 @@ class PlotterAccessor():
     def _save_plot(self, formats=["png"], name="plot", DIR=""):
         """Save plot in a given format.
         
-        :formats: list, format of the figure (see plt.savefig)
-        :name: string, default "plot". File name.
-        :DIR: string, default "". Directory.
+        Parameters
+        ----------
+
+        formats : list of str, format of the figure (see plt.savefig)
+        name : string, default "plot". File name.
+        DIR : string, default "". Directory for saving.
         """
         for fmt in formats:
             plt.savefig("{DIR}{name}.{fmt}".format(DIR=DIR,
@@ -473,7 +486,7 @@ class PlotterAccessor():
 
     def _plot_per_microgramm(self, constrained=True, df=None, profile=None, species=None,
                              new_figure=False, **kwargs):
-        """
+        """Internal method
         """
         import seaborn as sns
         pmf = self._parent
@@ -521,13 +534,15 @@ class PlotterAccessor():
         import seaborn as sns
         """TODO: Docstring for _plot_totalspeciesum.
 
-        :df: TODO
-        :constrained: Boolean, either to use the constrained run or the base run
-        :profile: TODO
-        :species: TODO
-        :sumsp: dataframe with the sum of each species
-        :new_figure: TODO
-        :returns: TODO
+        Parameters
+        ----------
+
+        df : TODO
+        constrained : Boolean, either to use the constrained run or the base run
+        profile : TODO
+        species : TODO
+        sumsp : dataframe with the sum of each species
+        new_figure : TODO
 
         """
         pmf = self._parent
@@ -578,16 +593,15 @@ class PlotterAccessor():
         Parameters
         ----------
 
-        dfBS : pd.DataFrame
-        dfDISP: TODO
-        :dfcontrib: TODO
-        :profile: TODO
-        :specie: TODO
-        :BS: TODO
-        :DISP: TODO
-        :BSDISP: TODO
-        :new_figure: TODO
-        :returns: TODO
+        dfBS  : pd.DataFrame
+        dfDISP : TODO
+        dfcontrib : TODO
+        profile : TODO
+        specie : TODO
+        BS : TODO
+        DISP : TODO
+        BSDISP : TODO
+        new_figure : TODO
 
         """
         import seaborn as sns
@@ -648,15 +662,14 @@ class PlotterAccessor():
                       specie=None, BS=False, DISP=False, BSDISP=False):
         """TODO: Docstring for _plot_profile.
 
-        :constrained: Boolean, either to use the constrained run or the base one
-        :dfcontrib: TODO
-        :dfprofile: TODO
-        :profile: TODO
-        :specie: TODO
-        :BS: TODO
-        :DISP: TODO
-        :BSDISP: TODO
-        :returns: TODO
+        constrained : Boolean, either to use the constrained run or the base one
+        dfcontrib : TODO
+        dfprofile : TODO
+        profile : TODO
+        specie : TODO
+        BS : TODO
+        DISP : TODO
+        BSDISP : TODO
 
         """
         pmf = self._parent
@@ -701,13 +714,16 @@ class PlotterAccessor():
             plot_save=False, BDIR=None):
         """Plot profiles in concentration unique (µg/m3).
 
-        :df: DataFrame with multiindex [species, profile] and an arbitrary
-            number of column.  Default to dfBS_profile_c.
-        :constrained: Boolean, either to use the constrained run or the base run
-        :profiles: list, profile to plot (one figure per profile)
-        :species: list, specie to plot (x-axis)
-        :plot_save: boolean, default False. Save the graph in BDIR.
-        :BDIR: string, directory to save the plot.
+        Parameters
+        ----------
+
+        df : DataFrame with multiindex [species, profile] and an arbitrary
+           number of column.  Default to dfBS_profile_c.
+        constrained : Boolean, either to use the constrained run or the base run
+        profiles : list of str, profile to plot (one figure per profile)
+        species : list of str, specie to plot (x-axis)
+        plot_save : boolean, default False. Save the graph in BDIR.
+        BDIR : string, directory to save the plot.
         """
         pmf = self._parent
 
@@ -756,12 +772,15 @@ class PlotterAccessor():
                             plot_save=False, BDIR=None, **kwargs):
         """Plot profiles in percentage of total specie sum (%).
 
-        :df: DataFrame with multiindex [species, profile] and an arbitrary
-            number of column.  Default to dfBS_profile_c.
-        :profiles: list, profile to plot (one figure per profile)
-        :species: list, specie to plot (x-axis)
-        :plot_save: boolean, default False. Save the graph in BDIR.
-        :BDIR: string, directory to save the plot.
+        Parameters
+        ----------
+
+        df : DataFrame with multiindex [species, profile] and an arbitrary
+           number of column.  Default to dfBS_profile_c.
+        profiles : list, profile to plot (one figure per profile)
+        species : list, specie to plot (x-axis)
+        plot_save : boolean, default False. Save the graph in BDIR.
+        BDIR : string, directory to save the plot.
         """
         pmf = self._parent
 
@@ -898,7 +917,7 @@ class PlotterAccessor():
         Parameters
         ----------
 
-        constrained: Boolean, default True
+        constrained : Boolean, default True
             Either to use the constrained run or the base one
         profiles : list of string
             Profiles to plot
@@ -980,8 +999,12 @@ class PlotterAccessor():
     def plot_stacked_contribution(self, constrained=True, order=None, plot_kwargs=None):
         """Plot a stacked plot for the contribution
 
-        :constrained: TODO
-        :returns: TODO
+        Parameters
+        ----------
+
+        constrained : TODO
+        order : TODO
+        plot_kwargs : TODO
 
         """
         pmf = self._parent
@@ -1018,16 +1041,22 @@ class PlotterAccessor():
             normalize=True, ax=None, barplot_kwarg={}):
         """Plot the relative contribution of the profiles.
 
-        :dfcontrib: DataFrame with contribution as column and date as index.
-        :dfprofiles: DataFrame with profile as column and specie as index.
-        :profiles: list, profile to plot (one figure per profile)
-        :specie: string, default totalVar. specie to plot
-        :plot_save: boolean, default False. Save the graph in BDIR.
-        :BDIR: string, directory to save the plot.
-        :annual: plot annual contribution
-        :normalize: plot relative contribution or absolute contribution.
-        
-        :returns: TODO
+        Parameters
+        ----------
+
+        dfcontrib : DataFrame with contribution as column and date as index.
+        dfprofiles : DataFrame with profile as column and specie as index.
+        profiles : list, profile to plot (one figure per profile)
+        specie : string, default totalVar. specie to plot
+        plot_save : boolean, default False. Save the graph in BDIR.
+        BDIR : string, directory to save the plot.
+        annual : plot annual contribution
+        normalize : plot relative contribution or absolute contribution.
+
+        Return
+        ------
+
+        df : DataFrame
 
         """
         from py4pm.dateutilities import add_season
@@ -1155,8 +1184,11 @@ class PMF(object):
     def __init__(self, site, BDIR, program=None):
         """Create a PMF object from the xlsx files output of EPAPMF5.
 
-        :site: str, the name of the site
-        :BDIR: str, the directory where the xlsx files live
+        Parameters
+        ----------
+
+        site : str, the name of the site and prefix of each files
+        BDIR : str, the directory where the xlsx files live
 
         """
         self._site = site
@@ -1191,6 +1223,7 @@ class PMF(object):
 
         Return
         ------
+
         df : dataframe
 
         """
@@ -1218,10 +1251,12 @@ class PMF(object):
         """Compute the factor profile relative mass (i.e. each species divided
         by the totalVar mass)
 
-        :constrained: TODO
-        :species: TODO
-        :profiles: TODO
-        :returns: TODO
+        Parameters
+        ----------
+
+        constrained : TODO
+        species : TODO
+        profiles : TODO
 
         """
         if constrained:
@@ -1266,6 +1301,19 @@ class PMF(object):
                                   normalize=True, constrained=True):
         """
         Get a dataframe of seasonal contribution
+
+        Parameters
+        ----------
+
+        specie :  default None
+        annual : default True
+        normalize : default True
+        constrained : default True
+
+        Return
+        ------
+
+        df : seasonal contribution
         """
         from py4pm.dateutilities import add_season
 
@@ -1337,8 +1385,6 @@ class PMF(object):
 
     def rename_profile_to_profile_category(self):
         """Rename the factor profile name to match the category
-        :returns: TODO
-
         """
         DF = [
             self.dfprofiles_b,
@@ -1363,14 +1409,17 @@ class PMF(object):
         self.profiles = [possible_sources[p] for p in self.profiles]
         
 
-    def recompute_new_species(self, specie=None):
+    def recompute_new_species(self, specie):
         """Recompute a specie given the other species. For instance, recompute OC
         from OC* and a list of organic species.
 
         It modify inplace both dfprofile_b and dfprofile_c, and update
         self.species.
 
-        :specie: str in ["OC",]
+        Parameters
+        ----------
+
+        specie : str in ["OC",]
 
         """
         knownSpecies = ["OC"]
