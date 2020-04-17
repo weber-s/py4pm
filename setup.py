@@ -1,4 +1,4 @@
-from distutils.core import setup
+from setuptools import setup
 
 PACKAGES = [
     'py4pm',
@@ -9,6 +9,7 @@ setup(
     name='py4pm',
     version='0.5',
     packages=PACKAGES,
+    url='https://gricad-gitlab.univ-grenoble-alpes.fr/webersa/py4pm',
     install_requires=['pandas', 'xlrd', 'matplotlib'],
     python_requires='>=3',
     author='Samuël Weber',
