@@ -12,6 +12,7 @@ def add_season(df, month=True, month_to_season=None):
 
     df: Pandas DataFrame.
         The DataFrame to work with.
+    month : add month number, default True
 
     return
     ------
@@ -29,15 +30,17 @@ def add_season(df, month=True, month_to_season=None):
 
     # ensure we have date in index
     if isinstance(dfnew.index, pd.DatetimeIndex):
-        dfnew["date"] = dfnew.index
-    elif 'date' in dfnew.columns:
-        dfnew["date"] = pd.to_datetime(dfnew["date"])
+        dfnew["Date"] = dfnew.index
+        dropDate = True
+    elif 'Date' in dfnew.columns:
+        dfnew["Date"] = pd.to_datetime(dfnew["Date"])
+        dropDate = False
     else:
         print("No date given")
         return
 
     # add a new column with the number of the month (Jan=1, etc)
-    dfnew["month"] = dfnew.date.apply(lambda x: x.month)
+    dfnew["month"] = dfnew["Date"].apply(lambda x: x.month)
     # sort it. This is not mandatory.
     dfnew.sort_values(by="month", inplace=True)
 
@@ -46,7 +49,8 @@ def add_season(df, month=True, month_to_season=None):
 
     if not month:
         dfnew.drop(columns=["month"], inplace=True)
-    dfnew.drop(columns=["date"], inplace=True)
+    if dropDate:
+        dfnew.drop(columns=["Date"], inplace=True)
 
     # and return the new dataframe
     return dfnew

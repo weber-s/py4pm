@@ -1335,6 +1335,34 @@ class PMF(object):
         self.species = [newTotalVar if x == self.totalVar else x for x in self.species]
         self.totalVar = newTotalVar
 
+    def rename_profile_to_profile_category(self):
+        """Rename the factor profile name to match the category
+        :returns: TODO
+
+        """
+        DF = [
+            self.dfprofiles_b,
+            self.dfprofiles_c,
+            self.dfcontrib_b,
+            self.dfcontrib_c,
+            self.dfBS_profile_b,
+            self.dfBS_profile_c,
+            self.df_uncertainties_summary_b,
+            self.df_uncertainties_summary_c,
+        ]
+        for df in DF:
+            if df is None:
+                continue
+            possible_sources = {
+                p: get_sourcesCategories([p])[0]
+                for p in self.profiles
+            }
+            df.rename(possible_sources, inplace=True, axis=1)
+            df.rename(possible_sources, inplace=True, axis=0)
+
+        self.profiles = [possible_sources[p] for p in self.profiles]
+        
+
     def recompute_new_species(self, specie=None):
         """Recompute a specie given the other species. For instance, recompute OC
         from OC* and a list of organic species.

@@ -75,6 +75,16 @@ def replace_QL(dftmp, species=None, conn=None):
                 dftmp.loc[idx, c] = dftmp.loc[idx, c].clip_lower(to_replace[c][-1])
 
 def get_sourceColor(source=None):
+    """Return the hexadecimal color of the source(s) 
+
+    If no option, then return the whole dictionary
+    
+    Optional Parameters
+    ===================
+
+    source : str
+        The name of the source
+    """
     color = {
         "Traffic": "#000000",
         "Traffic 1": "#000000",
@@ -99,10 +109,8 @@ def get_sourceColor(source=None):
         "Nitrate_rich": "#217ecb", # "#ff7f2a",
         "Nitrate rich": "#217ecb", # "#ff7f2a",
         "Secondary_inorganics": "#0000cc",
-        "Secondary_biogenic": "#ff7f2a", # 8c564b",
-        "Secondary biogenic": "#ff7f2a", # 8c564b",
+        "MSA_rich": "#ff7f2a", # 8c564b",
         "Secondary_oxidation": "#ff87dc",
-        "Secondary oxidation": "#ff87dc",
         "Marine SOA": "#ff7f2a", # 8c564b",
         "Biogenic SOA": "#8c564b",
         "Anthropogenic SOA": "#8c564b",
@@ -187,6 +195,7 @@ def get_sourcesCategories(profiles):
         "Bio burning": "Biomass_burning",
         "Comb fossile/biomasse": "Biomass_burning",
         "BB": "Biomass_burning",
+        "Biomass_burning": "Biomass_burning",
         "Biomass Burning": "Biomass_burning",
         "Biomass burning": "Biomass_burning",
         "BB1": "Biomass_burning1",
@@ -195,28 +204,33 @@ def get_sourcesCategories(profiles):
         "Sulphate-rich": "Sulfate_rich",
         "Nitrate-rich": "Nitrate_rich",
         "Sulfate rich": "Sulfate_rich",
+        "Sulfate_rich": "Sulfate_rich",
         "Nitrate rich": "Nitrate_rich",
+        "Nitrate_rich": "Nitrate_rich",
         "Secondary inorganics": "Secondary_inorganics",
-        "Secondaire": "Secondary_biogenic",
-        "Secondary bio": "Secondary_biogenic",
-        "Secondary biogenic": "Secondary_biogenic",
-        "Secondary organic": "Secondary_biogenic",
+        "Secondaire": "MSA_rich",
+        "Secondary bio": "MSA_rich",
+        "Secondary biogenic": "MSA_rich",
+        "Secondary organic": "MSA_rich",
         "Secondary oxidation": "Secondary_oxidation",
-        "Secondaire organique": "Secondary_biogenic",
+        "Secondaire organique": "MSA_rich",
         # "Marine SOA": "Marine SOA",
-        "Marine SOA": "Secondary_biogenic",
+        "Marine SOA": "MSA_rich",
+        "MSA_rich": "MSA_rich",
+        "MSA rich": "MSA_rich",
         "Secondary biogenic/sulfate": "SOA/sulfate (Mix)",
         "Marine SOA/SO4": "SOA/sulfate (Mix)",
+        "Marine/HFO": "Marine/HFO",
         "Marine biogenic/HFO": "Marine/HFO",
         "Secondary biogenic/HFO": "Marine/HFO",
         "Marine bio/HFO": "Marine/HFO",
         "Marin bio/HFO": "Marine/HFO",
         "Sulfate rich/HFO": "Marine/HFO",
-        "Marine secondary": "Secondary_biogenic",
-        "Marin secondaire": "Secondary_biogenic",
+        "Marine secondary": "MSA_rich",
+        "Marin secondaire": "MSA_rich",
         "HFO": "HFO",
         "HFO (stainless)": "HFO",
-        "Marin": "Secondary_biogenic",
+        "Marin": "MSA_rich",
         "Sea/road salt": "Sea-road salt",
         "Sea-road salt": "Sea-road salt",
         "sea-road salt": "Sea-road salt",
@@ -226,10 +240,12 @@ def get_sourcesCategories(profiles):
         "Salt": "Salt",
         "Fresh seasalt": "Salt",
         "Sels de mer": "Salt",
+        "Aged_salt": "Aged_salt",
         "Aged sea salt": "Aged_salt",
         "Aged seasalt": "Aged_salt",
         "Aged seasalt": "Aged_salt",
         "Aged salt": "Aged_salt",
+        "Primary_biogenic": "Primary_biogenic",
         "Primary bio": "Primary_biogenic",
         "Primary biogenic": "Primary_biogenic",
         "Biogénique primaire": "Primary_biogenic",
@@ -237,6 +253,7 @@ def get_sourcesCategories(profiles):
         "Biogenic": "Primary_biogenic",
         "Mineral dust": "Dust",
         "Mineral dust ": "Dust",
+        "Resuspended_dust": "Resuspended_dust",
         "Resuspended dust": "Resuspended_dust",
         "Dust": "Dust",
         "Crustal dust": "Dust",
@@ -324,6 +341,36 @@ def get_OC_from_OC_star_and_organic(df):
         if sp in df.index:
             OC += df.loc[sp] * equivC[sp]
     return OC
+
+def get_sample_where(sites=None, date_min=None, date_max=None, species=None,
+                     min_sample=None, particle_size=None, con=None):
+    """Get dataframe that meet conditions
+
+    :sites: TODO
+    :date_min: TODO
+    :date_max: TODO
+    :min_sample: int, minimum samples size
+    :particle_size:
+    :con: sqlite3 connection
+    :returns: TODO
+
+    """
+    df = pd.read_sql("SELECT * FROM values_all;", con=con)
+
+    df["Date"] = pd.to_datetime(df["Date"])
+    if date_min:
+        df = df.loc[date_min < df["Date"]]
+    if date_max:
+        df = df.loc[df["Date"] < date_max]
+    if species:
+        df = df.loc[df[species].notnull().all(axis=1)]
+    if particle_size:
+        df["Station"] = df["Station"]+"—"+df["Particle_size"]
+    if min_sample:
+        keep_stations = df.groupby("Station").size()
+        keep_stations = list(keep_stations.loc[keep_stations > min_sample].index)
+        df = df.loc[df["Station"].isin(keep_stations)]
+    return df
 
 
 def _format_ions(text):
@@ -620,4 +667,39 @@ class plot():
                     )
                 )
 
+
+    def what_do_we_have(sites=None, date_min=None, date_max=None, species=None,
+                        min_sample=None, particle_size=None, con=None):
+        """TODO: Docstring for what_do_we_have.
+
+        :sites: TODO
+        :date_min: TODO
+        :date_max: TODO
+        :species: TODO
+        :min_sample: TODO
+        :con: TODO
+        :returns: TODO
+
+        """
+        df = get_sample_where(
+            sites=sites,
+            date_min=date_min,
+            date_max=date_max,
+            species=species,
+            min_sample=min_sample,
+            particle_size=particle_size,
+            con=con
+        )
+
+        df.set_index(["Station", "Date"], inplace=True)
+        stations = df.index.get_level_values("Station").unique()
+
+        fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(12, 8))
+        for i, station in enumerate(stations):
+            date = df.loc[station].index
+            ax.plot(date, [i]*len(date), "-o", label=station)
+
+        ax.set_yticks(range(len(stations)))
+        ax.set_ylim(-0.5, len(stations)-0.5)
+        ax.set_yticklabels(stations)
 

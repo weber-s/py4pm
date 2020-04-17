@@ -292,7 +292,7 @@ def plot_similarity_profile(SID, PD, err="ci", plotAll=False):
             # ax.add_patch(rect)
             # ax.set_xlim(0, 1.5)
             # ax.set_ylim(0, 1)
-            plt.savefig("distance_all_profile_{p}.png".format(
+            plt.savefig("distance_all_profile_{p}.pdf".format(
                 p=p.replace(" ", "-").replace("/", "-")
             ))
     # ---- plot part
