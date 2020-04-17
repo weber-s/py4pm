@@ -12,8 +12,6 @@
 #
 import os
 import sys
-import recommonmark
-from recommonmark.transform import AutoStructify
 
 sys.path.insert(0, os.path.abspath('..'))
 
@@ -25,7 +23,7 @@ copyright = '2019, Samuël Weber'
 author = 'Samuël Weber'
 
 # The full version, including alpha/beta/rc tags
-release = '0.1'
+release = '0.5'
 
 
 # -- General configuration ---------------------------------------------------
@@ -41,7 +39,12 @@ extensions = [
     'recommonmark'
 ]
 
-source_suffix = ['.rst', '.md']
+source_suffix = {
+    '.rst': 'restructuredtext',
+    '.txt': 'markdown',
+    '.md': 'markdown',
+}
+
 autodoc_mock_imports = ["numpy", "scipy", "pandas", "matplotlib", "seaborn"]
 
 # Add any paths that contain templates here, relative to this directory.
