@@ -44,17 +44,46 @@ Now, `grecb` is an instance of a PMF object, and has a lot of `reader` and `plot
 Read the data
 -------------
 
-In order to retrieve the contributions of the profiles from the contrained run
-(in `GRE-cb_Contrained.xlsx`, sheet "contributions", seconda table for total variable) :
+### Organization
+
+The `read` class of the PMF object give access to different reader to retreive data from
+the different xlsx files outputed by the EPA PMF5 software.
+
+They all start by `read_base*` or `read_constrained*` name, for the base and constrained
+run, respectively.
+
+The special method `read_metadata` is used to retrieve the factors names and species names
+from the `_base.xlsx` files, and use them everywhere else. It also try to set the total
+variable name if any (one of PM10, PM2.5, PMrecons, PM10rec, PM10recons, otherwise try to
+guess), used to convert unit and to be the default variable to plot.
+
+For now, the following readers are implemented :
+
+ - [read_metadata](api_py4pm.html#py4pm.pmfutilities.ReaderAccessor.read_metadata)
+ - [read_base_contributions](api_py4pm.html#py4pm.pmfutilities.ReaderAccessor.read_base_contributions)
+ - [read_base_profiles](api_py4pm.html#py4pm.pmfutilities.ReaderAccessor.read_base_profiles)
+ - [read_base_bootstrap](api_py4pm.html#py4pm.pmfutilities.ReaderAccessor.read_base_bootstrap)
+ - [read_base_uncertainties_summary](api_py4pm.html#py4pm.pmfutilities.ReaderAccessor.read_base_uncertainties_summary)
+ - [read_constrained_contributions](api_py4pm.html#py4pm.pmfutilities.ReaderAccessor.read_constrained_contributions)
+ - [read_constrained_profiles](api_py4pm.html#py4pm.pmfutilities.ReaderAccessor.read_constrained_profiles)
+ - [read_constrained_bootstrap](api_py4pm.html#py4pm.pmfutilities.ReaderAccessor.read_constrained_bootstrap)
+ - [read_constrained_uncertainties_summary](api_py4pm.html#py4pm.pmfutilities.ReaderAccessor.read_constrained_uncertainties_summary)
+
+### Contribution
+
+The contributions of the factors (`G` matrix) are read from the `_base.xlsx` and
+`_Constrained.xlsx` files, sheet `contributions`.
+You can read them using the reader `read_base_contributions` and
+`read_constrained_contributions`:
 
 ```python
+grecb.read.read_base_contributions()
 grecb.read.read_constrained_contributions()
 
 ```
 
-will go through `GRE-cb_Base.xlsx` file to retreive the list of PMF factor, try to infer
-the total variable (if any), and read the contribution from the constrained run.
-And now, the `grecb` object has a `dfcontrib_c` attribute (`_c` for the constrained run):
+And now, the `grecb` object has a `dfcontrib_b` and `dfcontrib_c` attributes (`_b` for the
+base run, `_c` for the constrained run):
 
 ```python
 >>> grecb.dfcontrib_c
@@ -69,18 +98,24 @@ Date                                    ...
 
 ```
 
-which is the `G` matrix, in normalized unit. In order to have it in `µg/m³`, we need to
-know the chemical profile from the constrained run, so run :
+which is the `G` matrix, in normalized unit. 
+
+### Chemical profiles
+
+The chemical profiles (or simply profiles) is the `F` matrix of the PMF (in `µg/m³`) and
+are read from the `_base.xslx` and `_Constrained.xlsx` files, sheet `Profiles`.
+You can read them using the reader `read_base_profiles` and `read_constrained_profiles`:
 
 ```python
+grecb.read.read_base_profile()
 grecb.read.read_constrained_profile()
 
 ```
 
-and `grecb` has now a not null `dfprofile_c` dataframe :
+and `grecb` has now a not null `dfprofiles_b` and `dfprofiles_c` dataframe :
 
 ```python
->>> grecb.dfprofile_c
+>>> grecb.dfprofiles_c
               Sulfate-rich  Nitrate-rich ... Biomass burning  Sea/road salt  Mineral dust
 specie                                   ...                                             
 PMrecons          4.402500      2.421300 ...        3.027900       0.364280      2.009600
@@ -93,28 +128,7 @@ SO42-             0.977680      0.010441 ...        0.092800       0.032969     
 
 ```
 
-And we can easily reconstruct the time serie in `µg/m³` of each specie for every profile
-by simple multiplication of the timeserie by the concentration in the chemical profile.
-`to_cubic_metter` does just that :
-
-```python
->>> grecb.to_cubic_metter()
-            Sulfate-rich  Nitrate-rich  ... Biomass burning  Sea/road salt  Mineral dust
-Date                                    ...                                             
-2017-02-28      1.415756     -0.256609  ...        0.587988       0.220859      0.367516
-2017-03-03      1.890786     -0.093951  ...        1.865035       0.018261      0.769456
-2017-03-06     -0.431987     -0.366900  ...        1.615264       1.688948      0.547435
-2017-03-09      2.833009     -0.006120  ...        3.302228       0.055808      2.177603
-2017-03-12      2.923656      0.746705  ...        5.169836      -0.072856      1.701991
-...                  ...           ...  ...             ...            ...           ...
-
-
-```
-
-Note that `to_cubic_metter` use by default the contrained run, all the profile and the total variable, but you
-can specify other condition (see [the doc of this method](api_py4pm.html#py4pm.pmfutilities.PMF.to_cubic_meter)).
-
-### Retreive uncertainties
+### Uncertainties
 
 You can also read the bootstrap and DISP result :
 
@@ -139,6 +153,32 @@ and now, you have access to :
 
   * `grecb.dfBS_profile_c` : all the bootstrap chemical profiles
   * `grecb.dfbootstrape_mapping_c` : the table of the mapping between base and BS factors
+
+### Utilities
+
+In order to have the contributions in `µg/m³`, which is given by `G⋅F`, we need to know
+both the chemical profile `F` and the contribution `G`.
+And we can easily reconstruct the time serie in `µg/m³` of each specie for every profile
+by simple multiplication of the timeserie by the concentration in the chemical profile.
+Since this is a very often computation, the method `to_cubic_metter` does just that :
+
+```python
+>>> grecb.to_cubic_metter()
+            Sulfate-rich  Nitrate-rich  ... Biomass burning  Sea/road salt  Mineral dust
+Date                                    ...                                             
+2017-02-28      1.415756     -0.256609  ...        0.587988       0.220859      0.367516
+2017-03-03      1.890786     -0.093951  ...        1.865035       0.018261      0.769456
+2017-03-06     -0.431987     -0.366900  ...        1.615264       1.688948      0.547435
+2017-03-09      2.833009     -0.006120  ...        3.302228       0.055808      2.177603
+2017-03-12      2.923656      0.746705  ...        5.169836      -0.072856      1.701991
+...                  ...           ...  ...             ...            ...           ...
+
+
+```
+
+Note that `to_cubic_metter` use by default the contrained run, all the profile and the total variable, but you
+can specify other conditions (see [the doc of this method](api_py4pm.html#py4pm.pmfutilities.PMF.to_cubic_meter)).
+
 
 Plot utilities
 --------------
