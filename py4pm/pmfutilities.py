@@ -35,6 +35,10 @@ class CachedAccessor:
 
 
 class ReaderAccessor():
+    """
+    Accessor class for the PMF class with all reader methods.
+    """
+
     def __init__(self, data):
         self._parent = data
     
@@ -42,9 +46,10 @@ class ReaderAccessor():
         """Get profiles, species and co
 
         It add a totalVariable (by default one of "PM10", "PM2.5", "PMrecons" or
-        "PM10recons", "PM10rec"]. Otherwise, try to guess.
-
+        "PM10recons", "PM10rec"). Otherwise, try to guess (variable with "PM" on its
+        name).
         """
+
         pmf = self._parent
         if pmf.dfprofiles_b is None:
             pmf.read.read_base_profiles()
@@ -463,6 +468,9 @@ class ReaderAccessor():
 
 
 class PlotterAccessor():
+    """
+    Accessor class for the PMF class with all plotter methods.
+    """
     def __init__(self, data):
         self._parent = data
 
@@ -664,7 +672,6 @@ class PlotterAccessor():
 
         constrained : Boolean, either to use the constrained run or the base one
         dfcontrib : TODO
-        dfprofile : TODO
         profile : TODO
         specie : TODO
         BS : TODO
