@@ -1,3 +1,5 @@
+[![Documentation Status](https://readthedocs.org/projects/py4pm/badge/?version=latest)](https://py4pm.readthedocs.io/en/latest/?badge=latest)
+
 Utilities to handle PMF data
 ============================
 
