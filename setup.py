@@ -26,8 +26,8 @@ setup(
 	'Development Status :: 3 - Alpha',
 
 	# Indicate who your project is intended for
-	'Intended Audience :: Scientist',
-	'Topic :: Atmospheric Science :: PMF',
+        'Intended Audience :: Science/Research',
+        'Topic :: Scientific/Engineering :: Atmospheric Science',
 
 	# Specify the Python versions you support here. In particular, ensure
 	# that you indicate whether you support Python 2, Python 3 or both.
