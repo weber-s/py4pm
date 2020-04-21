@@ -7,7 +7,7 @@ PACKAGES = [
 
 setup(
     name='py4pm',
-    version='0.5',
+    version='0.6',
     packages=PACKAGES,
     url='https://gricad-gitlab.univ-grenoble-alpes.fr/webersa/py4pm',
     install_requires=['pandas', 'xlrd', 'matplotlib'],
