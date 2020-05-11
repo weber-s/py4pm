@@ -601,7 +601,7 @@ class PlotterAccessor():
         d = d.reindex(species).unstack().reset_index()
         dref = dfprofiles[profile].divide(dfprofiles.sum(axis=1)) * 100
         dref = dref.reset_index()
-        sns.barplot(data=d, x="level_1", y=0, color="grey", ci="sd", ax=ax,
+        sns.barplot(data=d, x="specie", y=0, color="grey", ci="sd", ax=ax,
                     label="BS (sd)")
         sns.stripplot(data=dref, x="specie", y=0, color="red", jitter=False,
                       ax=ax, label="Ref. run")
