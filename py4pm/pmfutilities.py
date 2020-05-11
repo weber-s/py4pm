@@ -1,6 +1,7 @@
 import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.ticker as mticker
+import seaborn as sns
 from py4pm.chemutilities import get_sourceColor, get_sourcesCategories, format_ions
 
 class CachedAccessor:
@@ -523,7 +524,6 @@ class PlotterAccessor():
                              new_figure=False, **kwargs):
         """Internal method
         """
-        import seaborn as sns
         pmf = self._parent
 
         if new_figure:
@@ -566,7 +566,6 @@ class PlotterAccessor():
     def _plot_totalspeciesum(self, df=None, constrained=True, profile=None,
                              species=None, sumsp=None, new_figure=False,
                              **kwargs):
-        import seaborn as sns
         """TODO: Docstring for _plot_totalspeciesum.
 
         Parameters
@@ -639,7 +638,6 @@ class PlotterAccessor():
         new_figure : TODO
 
         """
-        import seaborn as sns
         pmf = self._parent
         
         if new_figure:
