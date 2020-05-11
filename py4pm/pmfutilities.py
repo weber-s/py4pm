@@ -72,6 +72,33 @@ class ReaderAccessor():
             pmf.totalVar = pmf.totalVar[0]
         print("Total variable set to: {}".format(pmf.totalVar))
 
+    def _split_df_by_nan(self, df):
+        """Internet method the read the bootstrap file format:
+        1 block of N lines (1 per factor) for each species, separated by an empty line.
+
+        Parameter
+        ---------
+
+        df : pd.DataFrame
+            The bootstrap data from the xlsx files. The header should be already removed.
+
+        Return
+        ------
+
+        pd.DataFrame, formatted by factor and species
+
+        """
+        pmf = self._parent
+        d = {}
+        dftmp = df.dropna()
+        for i, sp in enumerate(pmf.species):
+            d[sp] = dftmp.iloc[pmf.nprofiles*i:pmf.nprofiles*(i+1), :]
+            d[sp].index = pmf.profiles
+            d[sp].index.name = "profile"
+            d[sp].columns = ["Boot{}".format(i) for i in range(len(d[sp].columns))]
+        return d
+
+
     def read_base_profiles(self):
         """Read the "base" profiles result from the file: '_base.xlsx',
         sheet "Profiles", and add :
@@ -262,7 +289,7 @@ class ReaderAccessor():
 
         # 13 is the first column for BS result
         dfprofile_boot = dfprofile_boot.iloc[idx[0]+1:, 13:]
-        df = pmf._split_df_by_nan(dfprofile_boot)
+        df = self._split_df_by_nan(dfprofile_boot)
 
         df = pd.concat(df)
         df.index.names = ["specie", "profile"]
@@ -318,7 +345,7 @@ class ReaderAccessor():
         idx = idx[idx].index.tolist()
         # 13 is the first column for BS result
         dfprofile_boot = dfprofile_boot.iloc[idx[0]+1:, 13:]
-        df = pmf._split_df_by_nan(dfprofile_boot)
+        df = self._split_df_by_nan(dfprofile_boot)
 
         df = pd.concat(df)
         df.index.names = ["specie", "profile"]
@@ -1474,36 +1501,37 @@ class PMF(object):
             self.dfprofiles_c.loc[specie] = OCc.infer_objects()
 
 
-    def _split_df_by_nan(self, df):
-        """TODO: Docstring for split_df_by_nan.
 
-        :df: TODO
-        :returns: TODO
+    def print_uncertainties_summary(self, constrained=True, profiles=None,
+            species=None):
+        """Get the uncertainties given by BS, BS-DISP and DISP for the given profiles and
+        species
 
+        Parameters
+        ----------
+
+        constrained : boolean, True
+            Use the constrained run (False for the base run)
+        profiles : list of str
+            list of profiles, default all profiles
+        species : list of str
+            list of species, default all species
+
+        Return
+        ------
+
+        df : pd.DataFrame
+            BS, DISP and BS-DISP ranges
         """
-        d = {}
-        dftmp = df.dropna()
-        for i, sp in enumerate(self.species):
-            d[sp] = dftmp.iloc[self.nprofiles*i:self.nprofiles*(i+1), :]
-            d[sp].index = self.profiles
-            d[sp].index.name = "profile"
-            d[sp].columns = ["Boot{}".format(i) for i in range(len(d[sp].columns))]
-        return d
 
-
-    def print_base_uncertainties_summary(self, profiles=None,
-            species=None, BDIR=None):
-        """Print the uncertainties given by BS, BS-DISP and DISP
-        
-        :profiles: list, list of profiles, default all profiles
-        :species: list, list of species, default all species
-        
-        :returns: pd.DataFrame, BS, DISP and BS-DISP ranges
-        """
-        import seaborn as sns
-
-        if self.df_uncertainties_summary_b is None:
-            self.read.read_base_uncertainties_summary()
+        if constrained:
+            if self.df_uncertainties_summary_c is None:
+                self.read.read_constrained_uncertainties_summary()
+            df = self.df_uncertainties_summary_c
+        else:
+            if self.df_uncertainties_summary_b is None:
+                self.read.read_base_uncertainties_summary()
+            df = self.df_uncertainties_summary_b
 
         if profiles is None:
             if self.profiles is None:
@@ -1514,42 +1542,6 @@ class PMF(object):
             if self.species is None:
                 self.read.read_metadata()
             species = self.species
-
-        if BDIR is None:
-            BDIR = self._BDIR
-
-        df = self.df_uncertainties_summary_b
-
-        return df.T.loc[:, (profiles, species)]
-
-    def print_constrained_uncertainties_summary(self, profiles=None,
-            species=None, BDIR=None):
-        """Plot the uncertainties given by BS, BS-DISP and DISP
-        
-        :profiles: list, list of profiles, default all profiles
-        :species: list, list of species, default all species
-        
-        :returns: pd.DataFrame, BS, DISP and BS-DISP ranges
-        """
-        import seaborn as sns
-
-        if self.df_uncertainties_summary_c is None:
-            self.read.read_constrained_uncertainties_summary()
-
-        if profiles is None:
-            if self.profiles is None:
-                self.read.read_metadata()
-            profiles = self.profiles
-
-        if species is None:
-            if self.species is None:
-                self.read.read_metadata()
-            species = self.species
-
-        if BDIR is None:
-            BDIR = self._BDIR
-
-        df = self.df_uncertainties_summary_c
 
         return df.T.loc[:, (profiles, species)]
 
