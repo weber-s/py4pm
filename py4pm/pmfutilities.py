@@ -519,7 +519,7 @@ class PlotterAccessor():
             plt.savefig("{DIR}{name}.{fmt}".format(DIR=DIR,
                                                    name=name.replace("/", "-"), fmt=fmt))
 
-    def _plot_per_microgramm(self, constrained=True, df=None, profile=None, species=None,
+    def _plot_per_microgramm(self, df=None, constrained=True, profile=None, species=None,
                              new_figure=False, **kwargs):
         """Internal method
         """
@@ -563,7 +563,7 @@ class PlotterAccessor():
         labels = ["Ref. run", "BS"]
         ax.legend(handles=handles, labels=labels, loc="upper left", bbox_to_anchor=(1., 1.), frameon=False)
 
-    def _plot_totalspeciesum(self, constrained=True, df=None, profile=None,
+    def _plot_totalspeciesum(self, df=None, constrained=True, profile=None,
                              species=None, sumsp=None, new_figure=False,
                              **kwargs):
         import seaborn as sns
@@ -745,7 +745,7 @@ class PlotterAccessor():
         )
 
     def plot_per_microgramm(self, df=None, constrained=True, profiles=None, species=None,
-            plot_save=False, BDIR=None):
+                            plot_save=False, savedir=None):
         """Plot profiles in concentration unique (µg/m3).
 
         Parameters
@@ -756,8 +756,8 @@ class PlotterAccessor():
         constrained : Boolean, either to use the constrained run or the base run
         profiles : list of str, profile to plot (one figure per profile)
         species : list of str, specie to plot (x-axis)
-        plot_save : boolean, default False. Save the graph in BDIR.
-        BDIR : string, directory to save the plot.
+        plot_save : boolean, default False. Save the graph in savedir.
+        savedir : string, directory to save the plot.
         """
         pmf = self._parent
 
@@ -792,18 +792,17 @@ class PlotterAccessor():
         elif not(isinstance(species, list)):
             raise TypeError("species should be a list.")
 
-        if BDIR is None:
-            BDIR = pmf._BDIR
+        if savedir is None:
+            savedir = pmf._BDIR
 
         for p in profiles:
-            self._plot_per_microgramm(df, constrained=constrained, profile=p, species=species,
+            self._plot_per_microgramm(df=df, constrained=constrained, profile=p, species=species,
                                       new_figure=True)
             plt.subplots_adjust(left=0.1, right=0.9, bottom=0.3, top=0.9)
-            if plot_save: self._save_plot(DIR=BDIR, name=p+"_profile_perµg")
+            if plot_save: self._save_plot(DIR=savedir, name=p+"_profile_perµg")
 
-    def plot_totalspeciesum(self, df=None, profiles=None, species=None,
-                            constrained=True,
-                            plot_save=False, BDIR=None, **kwargs):
+    def plot_totalspeciesum(self, df=None, profiles=None, species=None, constrained=True,
+                            plot_save=False, savedir=None, **kwargs):
         """Plot profiles in percentage of total specie sum (%).
 
         Parameters
@@ -813,8 +812,8 @@ class PlotterAccessor():
            number of column.  Default to dfBS_profile_c.
         profiles : list, profile to plot (one figure per profile)
         species : list, specie to plot (x-axis)
-        plot_save : boolean, default False. Save the graph in BDIR.
-        BDIR : string, directory to save the plot.
+        plot_save : boolean, default False. Save the graph in savedir.
+        savedir : string, directory to save the plot.
         """
         pmf = self._parent
 
@@ -842,26 +841,25 @@ class PlotterAccessor():
                 pmf.read.read_metadata()
             species = pmf.species
 
-        if BDIR is None:
-            BDIR = pmf._BDIR
+        if savedir is None:
+            savedir = pmf._BDIR
 
-        new_figure = kwargs.pop("new_figure", False)
+        new_figure = kwargs.pop("new_figure", True)
 
         sumsp = pd.DataFrame(columns=species, index=['sum'])
         for sp in species:
             sumsp[sp] = df.loc[(sp, slice(None)),:].mean(axis=1).sum()
         for p in profiles:
-            self._plot_totalspeciesum(df, profile=p, species=species,
+            self._plot_totalspeciesum(df=df, profile=p, species=species,
                                       sumsp=sumsp, new_figure=new_figure,
                                       **kwargs)
             plt.subplots_adjust(left=0.1, right=0.9, bottom=0.3, top=0.9)
             if plot_save:
-                self._save_plot(DIR=BDIR, name=p+"_profile")
+                self._save_plot(DIR=savedir, name=p+"_profile")
 
-    def plot_contrib(self, dfBS=None, dfDISP=None, dfcontrib=None, profiles=None, specie=None,
-                     constrained=True,
-                     plot_save=False, BDIR=None, BS=True, DISP=True, BSDISP=False,
-                     new_figure=True, **kwargs):
+    def plot_contrib(self, dfBS=None, dfDISP=None, dfcontrib=None, profiles=None,
+                     specie=None, constrained=True, plot_save=False, savedir=None,
+                     BS=True, DISP=True, BSDISP=False, new_figure=True, **kwargs):
         """Plot temporal contribution in µg/m3.
 
         Parameters
@@ -877,8 +875,8 @@ class PlotterAccessor():
         specie : string, default totalVar.
             specie to plot (y-axis)
         plot_save : boolean, default False
-            Save the graph in BDIR.
-        BDIR : string
+            Save the graph in savedir.
+        savedir : string
             directory to save the plot
         """
         pmf = self._parent
@@ -930,8 +928,8 @@ class PlotterAccessor():
                 "`specie` should be a string, got {}.".format(specie)
             )
 
-        if BDIR is None:
-            BDIR = pmf._BDIR
+        if savedir is None:
+            savedir = pmf._BDIR
 
         for p in profiles:
             self._plot_contrib(dfBS=dfBS, dfDISP=dfDISP,
@@ -941,7 +939,7 @@ class PlotterAccessor():
                                **kwargs)
             plt.subplots_adjust(left=0.1, right=0.85, bottom=0.1, top=0.9)
             if plot_save:
-                self._save_plot(DIR=BDIR, name=p+"_contribution")
+                self._save_plot(DIR=savedir, name=p+"_contribution")
 
     def plot_all_profiles(self, constrained=True, profiles=None, specie=None,
                           BS=True, DISP=True, BSDISP=False, plot_save=False,
@@ -1071,7 +1069,7 @@ class PlotterAccessor():
         )
 
     def plot_seasonal_contribution(self, constrained=True, dfcontrib=None, dfprofiles=None, profiles=None,
-            specie=None, plot_save=False, BDIR=None, annual=True,
+            specie=None, plot_save=False, savedir=None, annual=True,
             normalize=True, ax=None, barplot_kwarg={}):
         """Plot the relative contribution of the profiles.
 
@@ -1082,8 +1080,8 @@ class PlotterAccessor():
         dfprofiles : DataFrame with profile as column and specie as index.
         profiles : list, profile to plot (one figure per profile)
         specie : string, default totalVar. specie to plot
-        plot_save : boolean, default False. Save the graph in BDIR.
-        BDIR : string, directory to save the plot.
+        plot_save : boolean, default False. Save the graph in savedir.
+        savedir : string, directory to save the plot.
         annual : plot annual contribution
         normalize : plot relative contribution or absolute contribution.
 
@@ -1126,8 +1124,8 @@ class PlotterAccessor():
                 pmf.read.read_metadata()
             specie = pmf.totalVar
 
-        if BDIR is None:
-            BDIR = pmf._BDIR
+        if savedir is None:
+            savedir = pmf._BDIR
 
         if ax is None:
             f, ax = plt.subplots(nrows=1, ncols=1, figsize=(7.5, 4.7))
@@ -1163,7 +1161,7 @@ class PlotterAccessor():
             title = "_seasonal_contribution_{}".format(
                     "normalized" if normalize else "absolute"
                     )
-            self._save_plot(DIR=BDIR, name=pmf._site+title)
+            self._save_plot(DIR=savedir, name=pmf._site+title)
         
         return (df)
 
