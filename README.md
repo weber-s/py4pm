@@ -1,4 +1,4 @@
-[![Documentation Status](https://readthedocs.org/projects/py4pm/badge/?version=latest)](https://py4pm.readthedocs.io/en/latest/?badge=latest)
+[![Documentation Status](https://img.shields.io/badge/Documentation-API-green)](https://webersa.gricad-pages.univ-grenoble-alpes.fr/py4pm/)
 
 Utilities to handle PMF data
 ============================
