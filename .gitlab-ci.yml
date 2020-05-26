@@ -13,7 +13,7 @@ test:
 pages:
   stage: deploy
   script:
-  - pip install doc-requirements.txt
+  - pip install -r doc-requirements.txt
   - cd docs && make html
   - cp docs/_build/html public
   artifacts:
