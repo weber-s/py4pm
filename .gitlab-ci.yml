@@ -14,8 +14,7 @@ pages:
   stage: deploy
   script:
   - pip install -r doc-requirements.txt
-  - cd docs && make html
-  - cp docs/_build/html public
+  - cd docs && sphinx-build -b html . ../public
   artifacts:
     paths:
     - public
