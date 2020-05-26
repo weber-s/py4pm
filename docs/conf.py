@@ -14,6 +14,7 @@ import os
 import sys
 import recommonmark
 from recommonmark.transform import AutoStructify
+import sphinx_rtd_theme
 
 sys.path.insert(0, os.path.abspath('..'))
 
@@ -38,7 +39,8 @@ extensions = [
     'sphinx.ext.intersphinx',
     'sphinx.ext.viewcode',
     'sphinx.ext.napoleon',
-    'recommonmark'
+    'recommonmark',
+    'sphinx_rtd_theme',
 ]
 
 source_suffix = {
@@ -67,7 +69,15 @@ exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
 html_theme = 'sphinx_rtd_theme'
 
 html_theme_options = {
-    'gitlab_url': 'https://gricad-gitlab.univ-grenoble-alpes.fr/webersa/py4pm',
+        }
+
+html_context = {
+        'display_gitlab': True,
+        'gitlab_host': 'gricad-gitlab.univ-grenoble-alpes.fr',
+        'gitlab_user': 'webersa',
+        'gitlab_repo': 'py4pm',
+        'gitlab_version': 'master/',
+        'conf_py_path': 'docs/',
         }
 
 
