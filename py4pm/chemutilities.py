@@ -217,6 +217,7 @@ def get_sourcesCategories(profiles):
         # "Marine SOA": "Marine SOA",
         "Marine SOA": "MSA_rich",
         "MSA_rich": "MSA_rich",
+        "MSA-rich": "MSA_rich",
         "MSA rich": "MSA_rich",
         "Secondary biogenic/sulfate": "SOA/sulfate (Mix)",
         "Marine SOA/SO4": "SOA/sulfate (Mix)",
