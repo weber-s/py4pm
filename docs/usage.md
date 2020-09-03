@@ -219,9 +219,36 @@ BF-Mineral dust                0            0          0                0       
 Plot utilities
 --------------
 
+For now, the following ploters are implemented :
+
+ - [plot_per_microgramm](api_py4pm.html#py4pm.pmfutilities.PloterAccessor.plot_per_microgramm)
+ - [plot_totalspeciesum](api_py4pm.html#py4pm.pmfutilities.PloterAccessor.plot_totalspeciesum)
+ - [plot_stacked_profiles](api_py4pm.html#py4pm.pmfutilities.PloterAccessor.plot_stacked_profiles)
+ - [plot_contrib](api_py4pm.html#py4pm.pmfutilities.PloterAccessor.plot_contrib)
+ - [plot_stacked_contribution](api_py4pm.html#py4pm.pmfutilities.PloterAccessor.plot_stacked_contribution)
+ - [plot_seasonal_contribution](api_py4pm.html#py4pm.pmfutilities.PloterAccessor.plot_seasonal_contribution)
+ - [plot_all_profiles](api_py4pm.html#py4pm.pmfutilities.PloterAccessor.plot_all_profiles)
+
 ### Chemical profile (per microgram of total variable)
 
+```python
+grecb.plot.plot_per_microgramm(profiles=["Primary biogenic"])
+
+```
+
 ### Chemical profile (in percentage of the sum of each species)
+
+```python
+grecb.plot.plot_totalspeciesum(profiles=["Primary biogenic"])
+
+```
+
+### Chemical profile stacked (in percentage of the sum of each species)
+
+```python
+grecb.plot.plot_stacked_profiles()
+
+```
 
 ### Contribution time series and uncertainties
 
