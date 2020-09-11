@@ -1,7 +1,7 @@
 from setuptools import setup
 from os import path
 
-VERSION = '0.6.3'
+VERSION = '0.6.4'
 
 PACKAGES = [
         'py4pm',
