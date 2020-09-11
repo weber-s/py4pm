@@ -598,6 +598,7 @@ class PlotterAccessor():
                 sumsp[sp] = df.loc[(sp, slice(None)), :].mean(axis=1).sum()
 
         d = df.xs(profile, level="profile").divide(sumsp.iloc[0], axis=0) * 100
+        d.index.names = ["specie"]
         d = d.reindex(species).unstack().reset_index()
         dref = dfprofiles[profile].divide(dfprofiles.sum(axis=1)) * 100
         dref = dref.reset_index()

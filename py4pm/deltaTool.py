@@ -67,6 +67,11 @@ def compute_SID(df1, df2, factor1=None, factor2=None, isRelativeMass=True):
         p1 = to_relativeMass(p1)
         p2 = to_relativeMass(p2)
 
+    if p1.index.str.contains("PM").any():
+        p1 = p1.loc[~p1.index.str.contains("PM")]
+    if p2.index.str.contains("PM").any():
+        p2 = p2.loc[~p2.index.str.contains("PM")]
+
     sp = p1.index.intersection(p2.index)
     if len(sp) > 3:
         ID = pd.np.abs(p1[sp]-p2[sp])
@@ -174,10 +179,19 @@ def get_all_SID_PD(PMF_profile, stations, factor2=None, isRelativeMass=False):
     `stations`.
     """
     factors = PMF_profile.dropna(axis=1, how='all').columns
-    SID = pd.DataFrame(index=pd.MultiIndex.from_product((factors, stations)),
-                       columns=list(stations))
-    PD = pd.DataFrame(index=pd.MultiIndex.from_product((factors, stations)),
-                      columns=list(stations))
+    SID = pd.DataFrame(
+            index=pd.MultiIndex.from_product(
+                (factors, stations),
+                names=["profile", "station"]),
+            columns=list(stations)
+            )
+    PD = pd.DataFrame(
+            index=pd.MultiIndex.from_product(
+                (factors, stations),
+                names=["profile", "station"]
+                ),
+            columns=list(stations)
+            )
     MAD = pd.DataFrame()
 
     list_stations1 = []
@@ -250,11 +264,11 @@ def plot_similarity_profile(SID, PD, err="ci", plotAll=False):
             continue
         x = SID.loc[(p, stations), stations]  # .sort_index(axis=1)
         x = x.where(np.triu(x, k=1).astype(bool))
-        x = x.reset_index().melt(id_vars=["profile", "station"]).dropna()
+        x = x.reset_index().melt(id_vars=["profile", "station"]).dropna().infer_objects()
         x = x.round(3)
         y = PD.loc[(p, stations), stations]  # .sort_index(axis=1)
         y = y.where(np.triu(y, k=1).astype(bool))
-        y = y.reset_index().melt(id_vars=["profile", "station"]).dropna()
+        y = y.reset_index().melt(id_vars=["profile", "station"]).dropna().infer_objects()
         y = y.round(3)
 
         similarity.loc[p, "x"] = x["value"].mean()
