@@ -20,7 +20,7 @@ setup(
     long_description=long_description,
     long_description_content_type='text/markdown',
     url='https://gricad-gitlab.univ-grenoble-alpes.fr/webersa/py4pm',
-    install_requires=['pandas', 'xlrd', 'matplotlib'],
+    install_requires=['pandas', 'xlrd', 'matplotlib', 'seaborn'],
     python_requires='>=3',
     author='Samuël Weber',
     author_email='samuel.weber@univ-grenoble-alpes.fr',
