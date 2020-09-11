@@ -197,7 +197,7 @@ class ReaderAccessor():
         dfcontrib = pd.read_excel(
             pmf._basename+"_base.xlsx",
             sheet_name=['Contributions'],
-            parse_date=["date"],
+            parse_dates=["date"],
             header=None,
         )["Contributions"]
 
@@ -237,7 +237,7 @@ class ReaderAccessor():
         dfcontrib = pd.read_excel(
             pmf._basename+"_Constrained.xlsx",
             sheet_name=['Contributions'],
-            parse_date=["date"],
+            parse_dates=["date"],
             header=None,
         )["Contributions"]
 
