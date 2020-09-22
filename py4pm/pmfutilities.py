@@ -1439,6 +1439,32 @@ class PMF(object):
 
         self.profiles = [possible_sources[p] for p in self.profiles]
         
+    def rename_profile(self, mapper):
+        """Rename a factor profile
+        """
+        DF = [
+            self.dfprofiles_b,
+            self.dfprofiles_c,
+            self.dfcontrib_b,
+            self.dfcontrib_c,
+            self.dfBS_profile_b,
+            self.dfBS_profile_c,
+            self.df_uncertainties_summary_b,
+            self.df_uncertainties_summary_c,
+        ]
+        for df in DF:
+            if df is None:
+                continue
+            df.rename(mapper, inplace=True, axis=1)
+            df.rename(mapper, inplace=True, axis=0)
+
+        new_profiles = []
+        for p in self.profiles:
+            if p in mapper.keys():
+                new_profiles.append(mapper[p])
+            else:
+                new_profiles.append(p)
+        self.profiles = new_profiles
 
     def recompute_new_species(self, specie):
         """Recompute a specie given the other species. For instance, recompute OC
