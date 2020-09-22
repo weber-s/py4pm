@@ -135,6 +135,7 @@ def get_sourceColor(source=None):
         "Fresh seasalt": "#00b0f0",
         "Aged_salt": "#97bdff", #00b0f0",
         "Aged seasalt": "#97bdff", #00b0f0",
+        "Aged sea salt": "#97bdff", #00b0f0",
         "Fungal spores": "#ffc000",
         "Primary_biogenic": "#ffc000",
         "Primary biogenic": "#ffc000",
