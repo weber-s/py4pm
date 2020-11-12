@@ -34,6 +34,45 @@ MAPPER_METALS_NAME_TO_SYMBOLE = {
     "Bismuth": "Bi",
 }
 
+def get_all_species_pretty_index():
+    carboneous = ["OC", "OC*", "EC"]
+    ions = ["Cl-", "NO3-", "SO42-", "Na+", "NH4+", "K+", "Mg2+", "Ca2+"]
+    organics = [
+        "MSA",
+        "Arabitol", "Sorbitol", "Mannitol", "Levoglucosan", "Mannosan",
+        "Polyols",
+        "Galactosan", "Glucose", "Cellulose", "Oxalate", 
+        
+        "Maleic", "Succinic", "Citraconic", "Glutaric", "Oxoheptanedioic",
+        "MethylSuccinic", "Adipic", "Methylglutaric", "3-MBTCA", "Phtalic",
+        "Pinic", "Suberic", "Azelaic", "Sebacic",
+
+        "PAH_Sum", "Alkanes_Sum", "MethPAH_Sum", "PAHs_Sum", "Hopane_Sum",
+        "Methoxyphenol_Sum", "MNC_Sum", "MC_Sum",
+        "BNT(2,1)", "BNT(1,2)", "BNT(2,3)", "DNT(2,1)", "BPT(2,1)",
+        "Vanilline", "Acetovanillone", "Guaiacylacetone", "Coniferylaldehyde",
+        "Vanillic", "Hamovanillic", "Syringol", "4-methylsyringol",
+        "4-propenylsyringol", "Acetosyringone", "Syringyl_acetone",
+        "Sinapyl_aldehyde", "Syringic_acid", "Cholesterol",
+        "Phe", "Ace", "For", "An", "Fla", "Pyr", "Tri", "Ret", "BaA", "Chr", "BeP", "BbF", "BkF",
+        "BaP", "BghiP", "DBahA", "IP", "Cor",
+
+        "Nb_VL",
+    ]
+    organics += ["C{}".format(i) for i in range(11,41)]
+    organics += ["HP{c}".format(c=str(i)) for i in range(1,11)]
+    organics += ["Alkanes_WAX", "Alkanes_noWAX"]
+
+    metals = [
+        "Al", "As", "Ba", "Ca", "Cd", "Ce", "Co", "Cr", "Cs", "Cu", "Fe", "K",
+        "La", "Li", "Mg", "Mn", "Mo", "Na", "Ni", "Pb", "Pd", "Pt", "Rb", "Sb",
+        "Sc", "Se", "Sn", "Sr", "Ti", "Tl", "V", "Zn", "Zr"
+    ]
+
+    keep_col = ["Date", "PM10", "PM10 corrigées", "PM2.5 corrigées",
+                "PM10recons", "PMrecons"] + carboneous + ions + organics + metals
+    return keep_col
+
 def replace_QL(dftmp, species=None, conn=None):
     """Replace the -1 and -2 in the dataframe by the appropriate DL and QL
     values
