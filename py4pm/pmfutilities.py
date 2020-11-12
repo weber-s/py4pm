@@ -1,4 +1,6 @@
+import numpy as np
 import pandas as pd
+from matplotlib.gridspec import GridSpec
 import matplotlib.pyplot as plt
 import matplotlib.ticker as mticker
 import seaborn as sns
@@ -218,7 +220,7 @@ class ReaderAccessor():
         dfcontrib.set_index("Date", inplace=True)
         dfcontrib = dfcontrib[dfcontrib.index.notnull()]
 
-        dfcontrib.replace({-999: pd.np.nan}, inplace=True)
+        dfcontrib.replace({-999: np.nan}, inplace=True)
 
         pmf.dfcontrib_b = dfcontrib
 
@@ -255,7 +257,7 @@ class ReaderAccessor():
         dfcontrib.dropna(axis=0, how="all", inplace=True)
         dfcontrib.dropna(axis=1, how="all", inplace=True)
         dfcontrib.columns = ["Date"] + pmf.profiles
-        dfcontrib.replace({-999:pd.np.nan}, inplace=True)
+        dfcontrib.replace({-999: np.nan}, inplace=True)
         dfcontrib.set_index("Date", inplace=True)
         dfcontrib = dfcontrib[dfcontrib.index.notnull()]
 
@@ -480,7 +482,7 @@ class ReaderAccessor():
         idx = df.iloc[:, 0].str.contains("Specie|Concentration").astype(bool)
         df = df.drop(idx[idx].index)
         df = df.dropna(axis=0, how='all')
-        df["profile"] = pd.np.repeat(pmf.profiles, len(pmf.species)).tolist()
+        df["profile"] = np.repeat(pmf.profiles, len(pmf.species)).tolist()
 
         df.columns = ["specie", "Constrained base run",
                 "BS 5th", "BS median", "BS 95th", "tmp1",
@@ -542,9 +544,9 @@ class PlotterAccessor():
         d = d.reindex(species).unstack().reset_index()
         dref = dfprofiles[profile] / dfprofiles.loc[pmf.totalVar, profile]
         dref = dref.reset_index()
-        sns.boxplot(data=d.replace({0: pd.np.nan}), x="specie", y=0,
+        sns.boxplot(data=d.replace({0: np.nan}), x="specie", y=0,
                     color="grey", ax=ax)
-        sns.stripplot(data=dref.replace({0: pd.np.nan}), x="specie", y=profile,
+        sns.stripplot(data=dref.replace({0: np.nan}), x="specie", y=profile,
                       ax=ax, jitter=False, color="red")
         ax.set_yscale('log')
         ax.set_xticklabels(
@@ -707,16 +709,22 @@ class PlotterAccessor():
         """
         pmf = self._parent
 
-        fig, axes = plt.subplots(nrows=3, ncols=1, figsize=(12, 12))
-        axes[0].get_shared_x_axes().join(axes[0], axes[1])
+        gs_profile = GridSpec(nrows=2, ncols=1, top=0.95, bottom=0.41, hspace=0.15)
+        gs_contrib = GridSpec(nrows=3, ncols=1)
+
+        fig = plt.figure(figsize=(12, 12))
+        ax1 = fig.add_subplot(gs_profile[0])
+        ax2 = fig.add_subplot(gs_profile[1], sharex=ax1)
+        ax3 = fig.add_subplot(gs_contrib[2])
+
         self._plot_per_microgramm(
             df=dfBS, constrained=constrained, profile=profile, species=pmf.species,
-            new_figure=False, ax=axes[0]
+            new_figure=False, ax=ax1
         )
 
         self._plot_totalspeciesum(
             df=dfBS, constrained=constrained, profile=profile, species=pmf.species,
-            new_figure=False, ax=axes[1]
+            new_figure=False, ax=ax2
         )
 
         self._plot_contrib(
@@ -725,13 +733,17 @@ class PlotterAccessor():
             dfBS=dfBS, dfDISP=dfDISP,
             BS=BS, DISP=DISP,
             profile=profile, specie=specie,
-            new_figure=False, ax=axes[2]
+            new_figure=False, ax=ax3
         )
 
         # axes[0].xaxis.tick_top()
 
-        for ax in axes:
+        for ax in fig.axes:
             ax.set_title("")
+
+        # ax1.set_xticklabels("")
+        plt.setp(ax1.get_xticklabels(), visible=False)
+
         fig.suptitle(profile)
 
         fig.subplots_adjust(
@@ -1048,7 +1060,7 @@ class PlotterAccessor():
                 df = df.reindex(sorted(df.columns), axis=1)
         labels = df.columns
 
-        y = pd.np.vstack(df.values).T
+        y = np.vstack(df.values).T
         colors = [
             get_sourceColor(c) for c in get_sourcesCategories(labels)
         ]
