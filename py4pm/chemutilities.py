@@ -419,8 +419,8 @@ def get_sample_where(sites=None, date_min=None, date_max=None, species=None,
     return df
 
 
-def _format_ions(text):
-    map_ions = {
+def _pretty_specie(text):
+    map_species = {
         "Cl-": "Cl$^-$",
         "Na+": "Na$^+$",
         "K+": "K$^+$",
@@ -429,23 +429,57 @@ def _format_ions(text):
         "SO42-": "SO$_4^{2-}$",
         "Mg2+": "Mg$^{2+}$",
         "Ca2+": "Ca$^{2+}$",
-        "nss-SO42-": "nss-SO$_4^{2-}$"
+        "nss-SO42-": "nss-SO$_4^{2-}$",
+        "OP_DTT_m3": "OP$^{DTT}_v$",
+        "OP_AA_m3": "OP$^{AA}_v$",
+        "OP_DTT_µg": "OP$^{DTT}_m$",
+        "OP_AA_µg": "OP$^{AA}_m$",
+        "PM_µg/m3": "PM mass",
     }
-    if text in map_ions.keys():
-        return map_ions[text]
+    if text in map_species.keys():
+        return map_species[text]
     else:
         return text
 
-def format_ions(text):
+def pretty_specie(text):
     if isinstance(text, list):
-        mapped = [_format_ions(x) for x in text]
+        mapped = [_pretty_specie(x) for x in text]
     elif isinstance(text, str):
-        mapped = _format_ions(text)
+        mapped = _pretty_specie(text)
     else:
         raise KeyError(
             "`text` must be a {x,y}ticklabels, a list of string or string"
         )
     return mapped
+
+def format_ions(text):
+    print("WARNING: format_ions is deprecated, use pretty_specie instead")
+    return pretty_specie(text)
+
+def _specie_unit(text):
+    map_species = {
+        "OP_DTT_m3": "nmol min⁻¹ m⁻³",
+        "OP_AA_m3": "nmol min⁻¹ m⁻³",
+        "OP_DTT_µg": "nmol min⁻¹ µg⁻¹",
+        "OP_AA_µg": "nmol min⁻¹ µg⁻¹",
+        "PM_µg/m3": "µg m⁻³",
+    }
+    if text in map_species.keys():
+        return map_species[text]
+    else:
+        return text
+
+def specie_unit(text):
+    if isinstance(text, list):
+        mapped = [_specie_unit(x) for x in text]
+    elif isinstance(text, str):
+        mapped = _specie_unit(text)
+    else:
+        raise KeyError(
+            "`text` must be a {x,y}ticklabels, a list of string or string"
+        )
+    return mapped
+
 
 class plot():
     
