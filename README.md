@@ -1,4 +1,5 @@
 [![Documentation Status](https://img.shields.io/badge/Documentation-API-green)](https://webersa.gricad-pages.univ-grenoble-alpes.fr/py4pm/)
+[![PyPI version](https://badge.fury.io/py/py4pm.svg)](https://badge.fury.io/py/py4pm)
 
 Utilities to handle PMF data
 ============================
