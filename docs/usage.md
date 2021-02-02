@@ -35,7 +35,7 @@ in order to convert them to a PMF object, run the following command :
 ```python
 from py4pm.pmfutilities import PMF
 
-grecb = PMF(site="GRE-cb", BDIR="/home/myname/Documents/PMF/GRE-fr/MobilAir_woOrga")
+grecb = PMF(site="GRE-cb", BDIR="/home/myname/Documents/PMF/GRE-cb/MobilAir_woOrga")
 
 ```
 
@@ -250,6 +250,16 @@ grecb.plot.plot_stacked_profiles()
 
 ```
 
+```eval_rst
+.. figure:: images/plot_stacked_profiles.png
+   :scale: 50 %
+   :alt: Stacked profiles
+   :align: center
+
+   Contribution of each factor to the different species
+
+```
+
 ### Contribution time series and uncertainties
 
 ```python
@@ -271,6 +281,22 @@ will produce the following graph
 
 Since the EPA PMF5 does not output the chemical profile (F) matrix of the boostrap, the uncertainties is estimated by computing the species concentration given the F matrix of the reference run and the G matrix of the bootstrap run. As a result, the output is "hacky" since in the bootstrap method, bith the F and G matrix are changing. If you want to remove them, just pass `BS=False` to the method.
 
+
+### Seasonnal contribution
+
+```python
+grecb.plot.plot_seasonal_contribution(normalize=False, annual=False)
+```
+
+```eval_rst
+.. figure:: images/plot_seasonnal_contribution.png
+   :scale: 50 %
+   :alt: Seasonnal barplot contribution
+   :align: center
+
+   Seasonnal contribution of the factors to the PM mass.
+
+```
 
 Utilities
 ---------
