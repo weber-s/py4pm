@@ -63,8 +63,9 @@ def format_xaxis_timeseries(ax):
 
     """
     ax.xaxis.set_major_locator(mdates.YearLocator())
-    ax.xaxis.set_major_formatter(mdates.DateFormatter("\n%Y"))
+    ax.xaxis.set_major_formatter(mdates.DateFormatter("%b\n%Y"))
     ax.xaxis.set_minor_locator(mdates.MonthLocator())
     ax.xaxis.set_minor_formatter(mdates.DateFormatter("%b"))
+    ax.set_xlabel("")
 
     plt.setp(ax.xaxis.get_majorticklabels(), rotation=00, ha="center")

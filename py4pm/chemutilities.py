@@ -1,38 +1,26 @@
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 from matplotlib.ticker import FuncFormatter
+import matplotlib.text as mtext
 import pandas as pd
 import seaborn as sns
 import sqlite3
 from py4pm.dateutilities import add_season
 
 MAPPER_METALS_NAME_TO_SYMBOLE = {
-    "Potassium": "K",
-    "Calcium": "Ca",
-    "Titanium": "Ti",
-    "Vanadium": "V",
-    "Chromium": "Cr",
-    "Manganese": "Mn",
-    "Iron": "Fe",
-    "Cobalt": "Co",
-    "Nickel": "Ni",
-    "Copper": "Cu",
-    "Zinc": "Zn",
-    "Gallium": "Ga",
-    "Germanium": "Ge",
-    "Arsenic": "As",
-    "Selenium": "Se",
-    "Bromine": "Br",
-    "Yttrium": "Yt",
-    "Molybdenum": "Mo",
-    "Cadmium": "Cd",
-    "Tin": "Sn",
-    "Antimony": "Sb",
-    "Mercury": "Hg",
-    "Thallium": "Tl",
-    "Lead": "Pb",
-    "Bismuth": "Bi",
-}
+        'Actinium': 'Ac', 'Aluminium': 'Al', 'Americium': 'Am', 'Antimony': 'Sb', 'Argon': 'Ar', 'Arsenic': 'As', 'Astatine': 'At', 'Barium': 'Ba', 'Berkelium': 'Bk', 'Beryllium': 'Be', 'Bismuth': 'Bi', 'Bohrium': 'Bh', 'Boron': 'B', 'Bromine': 'Br', 'Cadmium': 'Cd', 'Calcium': 'Ca', 'Californium': 'Cf', 'Carbon': 'C', 'Cerium': 'Ce', 'Cesium': 'Cs', 'Chlorine': 'Cl', 'Chromium': 'Cr', 'Cobalt': 'Co', 'Copper': 'Cu', 'Curium': 'Cm', 'Dubnium': 'Db', 'Dysprosium': 'Dy', 'Einsteinium': 'Es', 'Erbium': 'Er', 'Europium': 'Eu', 'Fermium': 'Fm', 'Fluorine': 'F', 'Francium': 'Fr', 'Gadolinium': 'Gd', 'Gallium': 'Ga', 'Germanium': 'Ge', 'Gold': 'Au', 'Hafnium': 'Hf', 'Hassium': 'Hs', 'Helium': 'He', 'Holmium': 'Ho', 'Hydrogen': 'H', 'Indium': 'In', 'Iodine': 'I', 'Iridium': 'Ir', 'Iron': 'Fe', 'Krypton': 'Kr', 'Lanthanum': 'La', 'Lawrencium': 'Lr', 'Lead': 'Pb', 'Lithium': 'Li', 'Lutetium': 'Lu', 'Magnesium': 'Mg', 'Manganese': 'Mn', 'Meitnerium': 'Mt', 'Mendelevium': 'Md', 'Mercury': 'Hg', 'Molybdenum': 'Mo', 'Neodymium': 'Nd', 'Neon': 'Ne', 'Neptunium': 'Np', 'Nickel': 'Ni', 'Niobium': 'Nb', 'Nitrogen': 'N', 'Nobelium': 'No', 'Osmium': 'Os', 'Oxygen': 'O', 'Palladium': 'Pd', 'Phosphorus': 'P', 'Platinum': 'Pt', 'Plutonium': 'Pu', 'Polonium': 'Po', 'Potassium': 'K', 'Praseodymium': 'Pr', 'Promethium': 'Pm', 'Protactinium': 'Pa', 'Radium': 'Ra', 'Radon': 'Rn', 'Rhenium': 'Re', 'Rhodium': 'Rh', 'Rubidium': 'Rb', 'Ruthenium': 'Ru', 'Rutherfordium': 'Rf', 'Samarium': 'Sm', 'Scandium': 'Sc', 'Seaborgium': 'Sg', 'Selenium': 'Se', 'Silicon': 'Si', 'Silver': 'Ag', 'Sodium': 'Na', 'Strontium': 'Sr', 'Sulfur': 'S', 'Tantalum': 'Ta', 'Technetium': 'Tc', 'Tellurium': 'Te', 'Terbium': 'Tb', 'Thallium': 'Tl', 'Thorium': 'Th', 'Thulium': 'Tm', 'Tin': 'Sn', 'Titanium': 'Ti', 'Tungsten': 'W', 'Ununbium': 'Uub', 'Ununnilium': 'Uun', 'Unununium': 'Uuu', 'Uranium': 'U', 'Vanadium': 'V', 'Xenon': 'Xe', 'Ytterbium': 'Yb', 'Yttrium': 'Y', 'Zinc': 'Zn', 'Zirconium': 'Zr'
+        }
+
+class LegendTitle(object):
+    def __init__(self, text_props=None):
+        self.text_props = text_props or {}
+        super(LegendTitle, self).__init__()
+
+    def legend_artist(self, legend, orig_handle, fontsize, handlebox):
+        x0, y0 = handlebox.xdescent, handlebox.ydescent
+        title = mtext.Text(x0, y0, orig_handle, **self.text_props)
+        handlebox.add_artist(title)
+        return title
 
 def get_all_species_pretty_index():
     carboneous = ["OC", "OC*", "EC"]
