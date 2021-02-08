@@ -36,3 +36,7 @@ def test_read_base_uncertainties_summary():
 def test_read_constrained_uncertainties_summary():
     pmf = PMF(site="GRE-cb", BDIR=DATA_DIR)
     pmf.read.read_constrained_uncertainties_summary()
+
+def test_read_all():
+    pmf = PMF(site="GRE-cb", BDIR=DATA_DIR)
+    pmf.read.read_all()

@@ -6,6 +6,9 @@ import matplotlib.ticker as mticker
 import seaborn as sns
 from py4pm.chemutilities import get_sourceColor, get_sourcesCategories, format_ions
 
+
+XLSX_ENGINE = "xlrd"
+
 class CachedAccessor:
      """
      Custom property-like object (descriptor) for caching accessors.
@@ -115,6 +118,7 @@ class ReaderAccessor():
                 pmf._basename+"_base.xlsx",
                 sheet_name=['Profiles'],
                 header=None,
+                engine=XLSX_ENGINE
                 )["Profiles"]
 
         idx = dfbase.iloc[:, 0].str.contains("Factor Profiles").fillna(False)
@@ -157,6 +161,7 @@ class ReaderAccessor():
                     pmf._basename+"_Constrained.xlsx",
                     sheet_name=['Profiles'],
                     header=None,
+                    engine=XLSX_ENGINE
                 )["Profiles"]
 
         idx = dfcons.iloc[:, 0].str.contains("Factor Profiles").fillna(False)
@@ -201,6 +206,7 @@ class ReaderAccessor():
             sheet_name=['Contributions'],
             parse_dates=[1],
             header=None,
+            engine=XLSX_ENGINE
         )["Contributions"]
 
         try:
@@ -241,6 +247,7 @@ class ReaderAccessor():
             sheet_name=['Contributions'],
             parse_dates=[1],
             header=None,
+            engine=XLSX_ENGINE
         )["Contributions"]
 
         idx = dfcontrib.iloc[:, 0].str.contains("Factor Contributions").fillna(False)
@@ -280,6 +287,7 @@ class ReaderAccessor():
             pmf._basename+"_boot.xlsx",
             sheet_name=['Profiles'],
             header=None,
+            engine=XLSX_ENGINE
         )["Profiles"]
 
         dfbootstrap_mapping_b = dfprofile_boot.iloc[2:2+pmf.nprofiles, 0:pmf.nprofiles+2]
@@ -337,6 +345,7 @@ class ReaderAccessor():
             pmf._basename+"_Gcon_profile_boot.xlsx",
             sheet_name=['Profiles'],
             header=None,
+            engine=XLSX_ENGINE
         )["Profiles"]
 
         dfbootstrap_mapping_c = dfprofile_boot.iloc[2:2+pmf.nprofiles, 0:pmf.nprofiles+2]
@@ -393,6 +402,7 @@ class ReaderAccessor():
             pmf._basename+"_BaseErrorEstimationSummary.xlsx",
             sheet_name=["Error Estimation Summary"],
             header=None,
+            engine=XLSX_ENGINE
             )["Error Estimation Summary"]
         rawdf = rawdf.dropna(axis=0, how="all").reset_index().drop("index", axis=1)
 
@@ -454,6 +464,7 @@ class ReaderAccessor():
             pmf._basename+"_ConstrainedErrorEstimationSummary.xlsx",
             sheet_name=["Constrained Error Est. Summary"],
             header=None,
+            engine=XLSX_ENGINE
             )["Constrained Error Est. Summary"]
         rawdf = rawdf.dropna(axis=0, how="all").reset_index().drop("index", axis=1)
 
@@ -495,6 +506,22 @@ class ReaderAccessor():
         df.drop(["tmp1", "tmp2"], axis=1, inplace=True)
 
         pmf.df_uncertainties_summary_c = df.infer_objects()
+
+    def read_all(self):
+        """Read all possible data outputed by the PMF
+        :returns: TODO
+
+        """
+
+        pmf = self._parent
+        for reader in ["read_base_profiles", "read_base_contributions",
+                "read_base_bootstrap", "read_base_uncertainties_summary",
+                "read_constrained_profiles", "read_constrained_contributions",
+                "read_constrained_bootstrap", "read_constrained_uncertainties_summary"]:
+            try:
+                getattr(pmf.read, reader)()
+            except FileNotFoundError:
+                print("The file is not found for {}".format(reader))
 
 
 class PlotterAccessor():
@@ -1261,13 +1288,14 @@ class PMF(object):
         Parameters
         ----------
 
+        constrained : Boolean, default True
         specie : str, the specie, default totalVar
         profiles : list of profile, default all profiles
 
         Return
         ------
 
-        df : dataframe
+        df : pd.DataFrame
 
         """
         if specie is None:
@@ -1297,9 +1325,14 @@ class PMF(object):
         Parameters
         ----------
 
-        constrained : TODO
-        species : TODO
-        profiles : TODO
+        constrained : Boolean, default True
+        species : list of str, default all species
+        profiles : list of str, default all profiles
+
+        Return
+        ------
+        
+        df : pd.DataFrame
 
         """
         if constrained:
@@ -1323,11 +1356,13 @@ class PMF(object):
 
         Parameters
         ----------
+
         constrained : boolean, default True
             use the constrained run or not
 
         Returns
         -------
+
         df : pd.DataFrame
             The normalized species sum per profiles
         """
@@ -1348,15 +1383,16 @@ class PMF(object):
         Parameters
         ----------
 
-        specie :  default None
-        annual : default True
-        normalize : default True
-        constrained : default True
+        specie : str, default to total variable
+        annual : Boolean, default True, add annual contribution
+        normalize : Boolean, default True, normalize to 100%
+        constrained : Boolean, default True
 
         Return
         ------
 
-        df : seasonal contribution
+        df : pd.DataFrame
+            seasonal contribution
         """
         from py4pm.dateutilities import add_season
 
@@ -1406,9 +1442,10 @@ class PMF(object):
     def replace_totalVar(self, newTotalVar):
         """replace the total var to all dataframe
 
-        :newTotalVar: TODO
-        :returns: TODO
+        Parameters
+        ----------
 
+        newTotalVar : str
         """
         DF = [
             self.dfprofiles_b,
@@ -1428,6 +1465,8 @@ class PMF(object):
 
     def rename_profile_to_profile_category(self):
         """Rename the factor profile name to match the category
+
+        See chemutilities.get_sourcesCategories
         """
         DF = [
             self.dfprofiles_b,
@@ -1453,6 +1492,12 @@ class PMF(object):
         
     def rename_profile(self, mapper):
         """Rename a factor profile
+
+        Parameters
+        ----------
+
+        mapper : dict
+            Key of the dictionnary are the old name, and value the desired name
         """
         DF = [
             self.dfprofiles_b,

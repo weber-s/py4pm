@@ -1,7 +1,7 @@
 from setuptools import setup
 from os import path
 
-VERSION = '0.6.6'
+VERSION = '0.6.7'
 
 PACKAGES = [
         'py4pm',
@@ -20,12 +20,12 @@ setup(
     long_description=long_description,
     long_description_content_type='text/markdown',
     url='https://gricad-gitlab.univ-grenoble-alpes.fr/webersa/py4pm',
-    install_requires=['pandas', 'xlrd', 'matplotlib', 'seaborn'],
+    install_requires=['pandas', 'xlrd<2', 'matplotlib', 'seaborn'],
     python_requires='>=3',
     author='Samuël Weber',
     author_email='samuel.weber@univ-grenoble-alpes.fr',
     project_urls={
-        'Documentation': 'https://py4pm.readthedocs.io/en/latest/',
+        'Documentation': 'https://webersa.gricad-pages.univ-grenoble-alpes.fr/py4pm/',
         'Source': 'https://gricad-gitlab.univ-grenoble-alpes.fr/webersa/py4pm',
         },
     classifiers=[
@@ -33,7 +33,7 @@ setup(
         #   3 - Alpha
         #   4 - Beta
         #   5 - Production/Stable
-        'Development Status :: 3 - Alpha',
+        'Development Status :: 4 - Beta',
 
         # Indicate who your project is intended for
         'Intended Audience :: Science/Research',
