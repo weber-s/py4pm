@@ -782,6 +782,51 @@ class PlotterAccessor():
             wspace=0.015
         )
 
+    def _get_polluted_days_mean(self, specie=None, constrained=True, threshold=None):
+        """Get the mean contribution of the sources for the given specie for polluted and
+        non-polluted days define by the threshold
+
+        Parameters
+        ----------
+
+        specie : str
+        constrained : boolean
+        threshold : int
+
+        Returns
+        -------
+
+        df : pd.DataFrame
+            Mean contribution by profile for the 2 categories
+        """
+
+        if specie is None:
+            specie = self._parent.totalVar
+
+
+        df = self._parent.to_cubic_meter(specie=specie, constrained=constrained)
+        df["polluted"] = df.sum(axis=1) > threshold
+        n_polluted = df["polluted"].sum()
+        n_not_polluted = df["polluted"].count() - n_polluted
+
+        df["polluted"].replace(
+                {
+                    True: "> {} µg/m³\n(n={})".format(threshold, n_polluted),
+                    False: "≤ {} µg/m³\n(n={})".format(threshold, n_not_polluted)
+                },
+                inplace=True
+        )
+
+        df = df.melt(id_vars=["polluted"], var_name=["profile"], value_name=specie)\
+            .groupby(["polluted", "profile"])\
+            .mean()\
+            .reset_index()\
+            .pivot(index=["polluted"], columns=["profile"])
+
+        df.columns = df.columns.get_level_values("profile")
+
+        return df
+
     def plot_per_microgramm(self, df=None, constrained=True, profiles=None, species=None,
                             plot_save=False, savedir=None):
         """Plot profiles in concentration unique (µg/m3).
@@ -1242,6 +1287,64 @@ class PlotterAccessor():
         fig.subplots_adjust(bottom=0.275, top=0.96, left=0.09, right=0.83)
 
         return ax
+
+    def plot_polluted_contribution(self, constrained=True, threshold=None, specie=None,
+            normalize=True):
+        """Plot a barplot splited by polluted/non-polluted days defined by the threshold
+        given.
+
+        Parameters
+        ----------
+        constrained : boolean, default True
+            use the constrained run or not
+        threshold : int, default 50
+            Threshold in µg/m³ to define a polluted days
+        specie : str, default to total variable
+            specie to use
+        normalize : boolean, default True
+            normalized the graph
+
+        """
+        if specie is None:
+            specie = self._parent.totalVar
+
+        df = self._get_polluted_days_mean(
+                constrained=constrained,
+                specie=specie,
+                threshold=threshold
+            )
+
+        if normalize:
+            df = (df.T / df.sum(axis=1)).T
+
+        colors = get_sourceColor()[df.columns].loc["color"].to_dict()
+
+        fig, ax = plt.subplots(1, 1, figsize=(5, 4))
+
+        df.plot(
+                kind="bar",
+                stacked=True,
+                color=colors,
+                ax=ax
+                )
+
+        ax.legend(
+                loc="center left",
+                bbox_to_anchor=(1.05, 0.5),
+                frameon=False
+                )
+
+        fig.subplots_adjust(right=0.6)
+
+
+        if normalize:
+            ax.set_ylim([0, 1])
+            ax.yaxis.set_major_formatter(mticker.PercentFormatter(xmax=1))
+
+        plt.setp(ax.get_xticklabels(), rotation=0)
+        ax.set_xlabel("")
+
+        fig.suptitle("{}\nContribution of the sources for {}".format(self._parent._site, specie))
 
 
 class PMF(object):
