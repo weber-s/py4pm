@@ -528,10 +528,10 @@ class plot():
         d = pd.DataFrame(index=list(df_proportion_OM_perday.columns) +
                          list(df_proportion_perday.columns))
 
-        d["other"] = df_proportion_perday.median()
-        d["organics"] = df_proportion_OM_perday.median()
+        d["other"] = df_proportion_perday.mean()
+        d["organics"] = df_proportion_OM_perday.mean()
         d.loc[ORGANICS, "other"] = pd.np.nan
-        df_mg_per_gOM = df_proportion_OM_perday.median() * 1000
+        df_mg_per_gOM = df_proportion_OM_perday.mean() * 1000
 
         # Plot part
         order1 = ["OM", "EC", "Cl-", "NO3-", "SO42-", "NH4+", "Ca2+", "Other ions",
@@ -654,9 +654,9 @@ class plot():
             "Anhydrous monosaccharides":  ["Levoglucosan", "Mannosan", "Galactosan"],
             "Polyols":  ["Arabitol", "Sorbitol", "Mannitol"],
             "Organic acids": [
-                "Maleic", "Succinic", "Citraconic", "Glutaric", "Oxoheptanedioic",
-                "MethylSuccinic", "Adipic", "Methylglutaric", "3-MBTCA", "Phtalic",
-                "Pinic", "Suberic", "Azelaic", "Sebacic"
+                "Maleic_acid", "Succinic_acid", "Citraconic_acid", "Glutaric_acid", "Oxoheptanedioic",
+                "MethylSuccinic_acid", "Adipic_acid", "MethylGlutaric", "3-MBTCA", "Phthalic_acid",
+                "Pinic_acid", "Suberic_acid", "Azelaic_acid", "Sebacic_acid"
             ],
             "Other ions": [
                 "Na+", "K+", "Mg2+",
@@ -665,14 +665,14 @@ class plot():
 
         TO_MICROGRAMME = ["OM", "EC", "HULIS"]
 
-        conn = sqlite3.connect("/home/webersa/Documents/BdD/BdD_PM/aerosols.db")
+        conn = sqlite3.connect("/home/webersa/Documents/BdD/bdd_aerosols/aerosols.db")
         df = pd.read_sql(
             "SELECT * FROM values_all WHERE station IN ('{}');".format(station),
             con=conn
         )
 
-        df.date = pd.to_datetime(df.date)
-        df.set_index("date", inplace=True, drop=True)
+        df["Date"] = pd.to_datetime(df["Date"])
+        df.set_index("Date", inplace=True, drop=True)
 
         df = df[(dateStart < df.index) & (df.index < dateEnd)]
 
@@ -687,7 +687,7 @@ class plot():
 
         dff = pd.DataFrame()
         for k in TO_GROUP.keys():
-            df[k] = df[TO_GROUP[k]].sum(axis=1, min_count=1)
+            df[k] = df[TO_GROUP[k]].clip(0).sum(axis=1, min_count=1)
         
         # Get only the columns we have
         dff = df.reindex(TO_GROUP.keys(), axis=1)
