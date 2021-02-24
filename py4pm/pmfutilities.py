@@ -3,6 +3,7 @@ import pandas as pd
 from matplotlib.gridspec import GridSpec
 import matplotlib.pyplot as plt
 import matplotlib.ticker as mticker
+import matplotlib.colors as mcolors
 import seaborn as sns
 from py4pm.chemutilities import get_sourceColor, get_sourcesCategories, format_ions
 
@@ -782,6 +783,41 @@ class PlotterAccessor():
             wspace=0.015
         )
 
+    def _plot_ts_stackedbarplot(df, ax):
+        idx = df.index
+        c = get_sourceColor()
+
+        # Date index
+        x = df.index
+
+        # Width
+        # Set it to 1.5 when no overlapping, 1 otherwise.
+        width = np.ones(len(x))*1.5
+        deltal = x[1:]-x[:-1]
+        deltal = deltal.append(pd.TimedeltaIndex([10,], 'D'))
+        deltar = pd.TimedeltaIndex([3], 'D')
+        deltar = deltar.append(x[1:]-x[:-1])
+        width[deltal < np.timedelta64(2, 'D')] = 1
+        width[deltar < np.timedelta64(2, 'D')] = 1
+
+        # Stacked bar plot
+        count = 0
+        default_colors = iter(mcolors.TABLEAU_COLORS.values())
+        for i in range(df.shape[1]):
+            bottom=df.iloc[:,0:count].sum(axis=1)
+            count += 1
+            try:
+                color = c[df.columns[i]]
+            except:
+                color = next(default_colors)
+            ax.bar(x, df[df.columns[i]],
+                   bottom=bottom,
+                   label=df.columns[i],
+                   width=width,
+                   color=color)
+
+        ax.set_ylim(bottom=0)
+
     def _get_polluted_days_mean(self, specie=None, constrained=True, threshold=None):
         """Get the mean contribution of the sources for the given specie for polluted and
         non-polluted days define by the threshold
@@ -1346,6 +1382,27 @@ class PlotterAccessor():
 
         fig.suptitle("{}\nContribution of the sources for {}".format(self._parent._site, specie))
 
+    def plot_samples_sources_contribution(self, constrained=True, specie=None):
+        """Plot bar plot of the contribution per sample (timeserie)
+        """
+
+        pmf = self._parent
+
+        if specie is None:
+            specie = self._parent.totalVar
+
+        df = pmf.to_cubic_meter(specie=specie)
+
+        fig, ax = plt.subplots()
+
+        _plot_ts_stackedbarplot(df, ax=ax)
+
+        # legend stuff
+        f = plt.gcf()
+        h, l = ax.get_legend_handles_labels()
+        f.legend(h, l, loc=7, frameon=False)
+
+        plt.subplots_adjust(top=0.90, bottom=0.10, left=0.10, right=0.85)
 
 class PMF(object):
 

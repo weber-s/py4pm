@@ -29,8 +29,8 @@ def add_season(df, month=True, month_to_season=None):
     dfnew = df.copy()
 
     # ensure we have date in index
-    if isinstance(dfnew.index, pd.DatetimeIndex):
-        dfnew["Date"] = dfnew.index
+    if "Date" in dfnew.index.names:
+        dfnew["Date"] = dfnew.index.get_level_values("Date")
         dropDate = True
     elif 'Date' in dfnew.columns:
         dfnew["Date"] = pd.to_datetime(dfnew["Date"])

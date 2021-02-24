@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 from matplotlib.ticker import FuncFormatter
 import matplotlib.text as mtext
 import pandas as pd
+import numpy as np
 import seaborn as sns
 import sqlite3
 from py4pm.dateutilities import add_season
@@ -406,6 +407,134 @@ def get_sample_where(sites=None, date_min=None, date_max=None, species=None,
         df = df.loc[df["Station"].isin(keep_stations)]
     return df
 
+def compute_PMreconstructed(df, takeOnlyPM10=True):
+    """
+    Add a column `PM10recons`: the mass of the PM10 according to the chemistry
+
+    Returns
+    -------
+    PMrecons: pd.DataFrame
+    """
+
+    if takeOnlyPM10 and ("PM10" not in df.index.get_level_values("Particle_size").unique()):
+        print(
+            "WARNING: no 'PM10' in 'Particle size'. Cannot reconstruct the PM "
+            "mass."
+        )
+        return
+
+    # The reconstruction method hold only for PM10.
+    if takeOnlyPM10:
+        idx = df.index.get_level_values("Particle_size") == "PM10"
+        dftmp = df.loc[idx].copy()
+    else:
+        dftmp = df.copy()
+
+    if "Date" not in df.index.names:
+        dftmp.set_index(["Date"], inplace=True)
+
+    num = dftmp._get_numeric_data()
+    num[num < 0] = 0
+    dftmp.dropna(axis=1, how="all", inplace=True)
+    cols = dftmp.columns
+
+    PMrecons = pd.DataFrame(index=dftmp.index, columns=[])
+
+    required_cols = ["Na+", "Ca2+", "OC", "EC", "NH4+", "NO3-", "SO42-"]
+    for c in required_cols:
+        if c not in cols:
+            print("WARNING: PM reconstrution fail, missing {c}".format(c=c))
+            return
+    nancol = pd.isna(df[required_cols]).any(axis=1)
+
+    if "NO3-" in cols:
+        PMrecons["NO3-"] = dftmp["NO3-"]/1000
+    if "NH4+" in cols:
+        PMrecons["NH4+"] = dftmp["NH4+"]/1000
+    if "EC" in cols:
+        PMrecons["EC"] = dftmp["EC"]
+    if "OC" in cols:
+        PMrecons["OM"] = 1.75*dftmp["OC"]
+    if "SO42-" in cols:
+        ssSO4 = 0.252 * dftmp["Na+"]
+        nssSO4 = dftmp["SO42-"] - ssSO4
+        PMrecons["nss-SO42-"] = nssSO4/1000
+
+    # seasalt
+    if "Cl-" in cols:
+        seasalt = dftmp["Cl-"] + 1.47*dftmp["Na+"]
+    else:
+        seasalt = 2.252 * dftmp["Na+"]
+    PMrecons["seasalt"] = seasalt/1000
+
+    # ==== dust ===============================================================
+    # Putaud : Putaud et al (2003a)
+    #    dust = 4.6 * nssCa
+    #         = 4.6 * (Ca2+ - Na+/26)
+    # Malm : Malm et al (1993)
+    #    dust = 0.16 * (1.90*Al + 2.15*Si + 1.41*Ca + 1.09*Fe + 1.67*Ti)
+    # Querol/Perez : Querol et al (2000) & Pérez et al (2008)
+    #    dust = Al2O3 + CO3 + SiO2
+    #         = 1.89*Al + 1.5*Ca + 3*(1.89*Al)
+    maskPutaud = pd.Series(index=dftmp.index, data=[True]*len(dftmp))
+    maskMalm = pd.Series(index=dftmp.index, data=[True]*len(dftmp))
+    maskQuerolPerez = pd.Series(index=dftmp.index, data=[True]*len(dftmp))
+    dust = pd.DataFrame(
+        columns=['dust'], data=np.nan, index=dftmp.index
+    )
+
+    # (Putaud et al., 2003a)
+    maskPutaud = dftmp["Ca2+"].notnull() & dftmp["Na+"].notnull()
+    nssCa = dftmp["Ca2+"] - dftmp["Na+"]/26
+    dusttmp = 4.6 * nssCa
+    dust.loc[maskPutaud, "dust"] = dusttmp[maskPutaud]
+    # (Malm et al., 1993)
+    if all([i in cols for i in ["Al", "Si", "Ca", "Fe", "Ti"]]):
+        for c in ["Al", "Si", "Ca", "Fe", "Ti"]:
+            maskMalm = maskMalm & dftmp[c].notnull()
+        dusttmp = 0.16 * (1.90*dftmp["Al"] + 2.15*dftmp["Si"] + 1.41*dftmp["Ca"]
+                          + 1.09*dftmp["Fe"] + 1.67*dftmp["Ti"])
+        dust.loc[maskMalm, "dust"] = dusttmp[maskMalm]
+    else:
+        maskMalm = ~maskMalm
+    # (Querol et al., 2000; Pérez et al., 2008)
+    querolperez_metals = ["Al", "Ca", "Fe", "K", "Mg", "Mn", "Ti", "P"]
+    if all([i in cols for i in querolperez_metals]):
+        maskQuerolPerez = maskQuerolPerez & dftmp[querolperez_metals].notnull().all(axis=1)
+        Al2O3 = 1.89 * dftmp["Al"]
+        CO3 = 1.5 * dftmp["Ca"]
+        SiO2 = 3 * Al2O3
+        dusttmp = Al2O3 + CO3 + SiO2
+        for c in ["Ca", "Fe", "K", "Mg", "Mn", "Ti", "P"]:
+            dusttmp += dftmp[c]
+        dust.loc[maskQuerolPerez, "dust"] = dusttmp[maskQuerolPerez]
+    else:
+        maskQuerolPerez = ~maskQuerolPerez
+
+    PMrecons["dust"] = dust["dust"]
+
+    PMreconsType = pd.DataFrame(index=PMrecons.index,
+                                columns=["dust_recons_type"], data="None")
+    PMreconsType.where(~maskPutaud, other="Putaud et al. 2003a", inplace=True)
+    PMreconsType.where(~maskMalm, other="Malm et al, 1993", inplace=True)
+    PMreconsType.where(~maskQuerolPerez, other="Querol et al., 2000 ; Pérez et al., 2008", inplace=True)
+    PMrecons["dust"] /= 1000
+
+    # ==== non dust (Salameh et al. 2014)
+    nondust_metals = ["Cu", "Ni", "Pb", "V", "Zn"]
+    if all([i in cols for i in nondust_metals]):
+        nondust = dftmp[nondust_metals].sum(axis=1)
+        PMrecons["nondust"] = nondust/1000
+
+    # ==== PM recons ==========================================================
+    # print(PMrecons.sum(axis=1))
+    # print(df)
+    # df["PM10recons"] = PMrecons.sum(axis=1).replace({0: np.nan})
+    # df["PM10reconsDustType"] = PMreconsType
+    # print(df["PM10recons"])
+    # df.loc[nancol, "PM10recons"] = np.nan
+
+    return PMrecons
 
 def _pretty_specie(text):
     map_species = {
