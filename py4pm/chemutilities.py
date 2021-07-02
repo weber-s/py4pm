@@ -821,7 +821,7 @@ class plot():
 
         df = pd.read_sql(
             "SELECT * FROM values_all WHERE Station IN ('{}');".format(station),
-            con=conn
+            con=con
         )
 
         df["Date"] = pd.to_datetime(df["Date"])
