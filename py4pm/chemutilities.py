@@ -8,6 +8,9 @@ import seaborn as sns
 import sqlite3
 from py4pm.dateutilities import add_season
 
+
+DB_AEROSOLS = "/home/webersa/Documents/BdD/bdd_aerosols/aerosols.db"
+
 MAPPER_METALS_NAME_TO_SYMBOLE = {
         'Actinium': 'Ac', 'Aluminium': 'Al', 'Americium': 'Am', 'Antimony': 'Sb', 'Argon': 'Ar', 'Arsenic': 'As', 'Astatine': 'At', 'Barium': 'Ba', 'Berkelium': 'Bk', 'Beryllium': 'Be', 'Bismuth': 'Bi', 'Bohrium': 'Bh', 'Boron': 'B', 'Bromine': 'Br', 'Cadmium': 'Cd', 'Calcium': 'Ca', 'Californium': 'Cf', 'Carbon': 'C', 'Cerium': 'Ce', 'Cesium': 'Cs', 'Chlorine': 'Cl', 'Chromium': 'Cr', 'Cobalt': 'Co', 'Copper': 'Cu', 'Curium': 'Cm', 'Dubnium': 'Db', 'Dysprosium': 'Dy', 'Einsteinium': 'Es', 'Erbium': 'Er', 'Europium': 'Eu', 'Fermium': 'Fm', 'Fluorine': 'F', 'Francium': 'Fr', 'Gadolinium': 'Gd', 'Gallium': 'Ga', 'Germanium': 'Ge', 'Gold': 'Au', 'Hafnium': 'Hf', 'Hassium': 'Hs', 'Helium': 'He', 'Holmium': 'Ho', 'Hydrogen': 'H', 'Indium': 'In', 'Iodine': 'I', 'Iridium': 'Ir', 'Iron': 'Fe', 'Krypton': 'Kr', 'Lanthanum': 'La', 'Lawrencium': 'Lr', 'Lead': 'Pb', 'Lithium': 'Li', 'Lutetium': 'Lu', 'Magnesium': 'Mg', 'Manganese': 'Mn', 'Meitnerium': 'Mt', 'Mendelevium': 'Md', 'Mercury': 'Hg', 'Molybdenum': 'Mo', 'Neodymium': 'Nd', 'Neon': 'Ne', 'Neptunium': 'Np', 'Nickel': 'Ni', 'Niobium': 'Nb', 'Nitrogen': 'N', 'Nobelium': 'No', 'Osmium': 'Os', 'Oxygen': 'O', 'Palladium': 'Pd', 'Phosphorus': 'P', 'Platinum': 'Pt', 'Plutonium': 'Pu', 'Polonium': 'Po', 'Potassium': 'K', 'Praseodymium': 'Pr', 'Promethium': 'Pm', 'Protactinium': 'Pa', 'Radium': 'Ra', 'Radon': 'Rn', 'Rhenium': 'Re', 'Rhodium': 'Rh', 'Rubidium': 'Rb', 'Ruthenium': 'Ru', 'Rutherfordium': 'Rf', 'Samarium': 'Sm', 'Scandium': 'Sc', 'Seaborgium': 'Sg', 'Selenium': 'Se', 'Silicon': 'Si', 'Silver': 'Ag', 'Sodium': 'Na', 'Strontium': 'Sr', 'Sulfur': 'S', 'Tantalum': 'Ta', 'Technetium': 'Tc', 'Tellurium': 'Te', 'Terbium': 'Tb', 'Thallium': 'Tl', 'Thorium': 'Th', 'Thulium': 'Tm', 'Tin': 'Sn', 'Titanium': 'Ti', 'Tungsten': 'W', 'Ununbium': 'Uub', 'Ununnilium': 'Uun', 'Unununium': 'Uuu', 'Uranium': 'U', 'Vanadium': 'V', 'Xenon': 'Xe', 'Ytterbium': 'Yb', 'Yttrium': 'Y', 'Zinc': 'Zn', 'Zirconium': 'Zr'
         }
@@ -186,7 +189,8 @@ def get_sourceColor(source=None):
         "Traffic/dust (Mix)": "#333333",
         "SOA/sulfate (Mix)": "#6c362b",
         "Sulfate rich/HFO": "#8c56b4",
-        "nan": "#ffffff"
+        "nan": "#ffffff",
+        "Undetermined": "#666"
     }
     color = pd.DataFrame(index=["color"], data=color)
     if source:
@@ -308,7 +312,8 @@ def get_sourcesCategories(profiles):
         "Siderurgie": "Industrial",
         "Débris végétaux": "Plant_debris",
         "Chlorure": "Chloride",
-        "PM other": "Other"
+        "PM other": "Other",
+        "Undetermined": "Undertermined"
         }
     s = [possible_sources[k] for k in profiles]
     return s
@@ -378,7 +383,7 @@ def get_OC_from_OC_star_and_organic(df):
     return OC
 
 def get_sample_where(sites=None, date_min=None, date_max=None, species=None,
-                     min_sample=None, particle_size=None, con=None):
+                     min_sample=None, particle_size=None, exclude_sites=None, con=None):
     """Get dataframe that meet conditions
 
     :sites: TODO
@@ -399,8 +404,15 @@ def get_sample_where(sites=None, date_min=None, date_max=None, species=None,
         df = df.loc[df["Date"] < date_max]
     if species:
         df = df.loc[df[species].notnull().all(axis=1)]
-    if particle_size:
+
+    if particle_size == "show":
         df["Station"] = df["Station"]+"—"+df["Particle_size"]
+    elif particle_size in ["PM10", "PM2.5", "PM1"]:
+        df = df.loc[df["Particle_size"] == particle_size]
+    
+    if exclude_sites:
+        df = df.loc[~df["Station"].isin(exclude_sites)]
+
     if min_sample:
         keep_stations = df.groupby("Station").size()
         keep_stations = list(keep_stations.loc[keep_stations > min_sample].index)
@@ -552,6 +564,8 @@ def _pretty_specie(text):
         "OP_DTT_µg": "OP$^{DTT}_m$",
         "OP_AA_µg": "OP$^{AA}_m$",
         "PM_µg/m3": "PM mass",
+        "PM10": "PM$_{10}$",
+        "PM2.5": "PM$_{2.5}$"
     }
     if text in map_species.keys():
         return map_species[text]
@@ -574,17 +588,23 @@ def format_ions(text):
     return pretty_specie(text)
 
 def _specie_unit(text):
+    """Return the unit of a given species.
+
+    Default unit is supposed to bo ng m⁻³
+    """
     map_species = {
         "OP_DTT_m3": "nmol min⁻¹ m⁻³",
         "OP_AA_m3": "nmol min⁻¹ m⁻³",
         "OP_DTT_µg": "nmol min⁻¹ µg⁻¹",
         "OP_AA_µg": "nmol min⁻¹ µg⁻¹",
         "PM_µg/m3": "µg m⁻³",
+        "OC": "µg m⁻³",
+        "EC": "µg m⁻³",
     }
     if text in map_species.keys():
         return map_species[text]
     else:
-        return text
+        return "ng m⁻³"
 
 def specie_unit(text):
     if isinstance(text, list):
@@ -757,7 +777,7 @@ class plot():
 
 
     def mainCompentOfPM(station, dateStart, dateEnd, seasonal=False,
-                        savefig=False, savedir=None):
+                        savefig=False, savedir=None, con=None):
         """
         Plot a stacked bar plot of the different constitutant of the PM
 
@@ -774,6 +794,8 @@ class plot():
             Save the fig in png and pdf
         savedir : str path, default None
             Where to save the figures
+        con : sql connection, default None
+            sql connection to the database
         """
         TO_GROUP = {
             "Metals": [
@@ -794,9 +816,11 @@ class plot():
 
         TO_MICROGRAMME = ["OM", "EC", "HULIS"]
 
-        conn = sqlite3.connect("/home/webersa/Documents/BdD/bdd_aerosols/aerosols.db")
+        if con is None:
+            con = sqlite3.connect("/home/webersa/Documents/BdD/bdd_aerosols/aerosols.db")
+
         df = pd.read_sql(
-            "SELECT * FROM values_all WHERE station IN ('{}');".format(station),
+            "SELECT * FROM values_all WHERE Station IN ('{}');".format(station),
             con=conn
         )
 
@@ -835,7 +859,6 @@ class plot():
         for i in TO_MICROGRAMME:
             dff[i] *= 1000
         
-        
         DF = []
         seasonName = []
         if seasonal:
@@ -866,7 +889,7 @@ class plot():
 
 
     def what_do_we_have(sites=None, date_min=None, date_max=None, species=None,
-                        min_sample=None, particle_size=None, con=None):
+                        min_sample=None, particle_size=None, exclude_sites=None, con=None):
         """TODO: Docstring for what_do_we_have.
 
         :sites: TODO
@@ -878,6 +901,9 @@ class plot():
         :returns: TODO
 
         """
+        if con is None:
+            con = sqlite3.connect(DB_AEROSOLS)
+
         df = get_sample_where(
             sites=sites,
             date_min=date_min,
@@ -885,6 +911,7 @@ class plot():
             species=species,
             min_sample=min_sample,
             particle_size=particle_size,
+            exclude_sites=exclude_sites,
             con=con
         )
 

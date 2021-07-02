@@ -1170,19 +1170,19 @@ class PlotterAccessor():
 
         y = np.vstack(df.values).T
         colors = [
-            get_sourceColor(c) for c in get_sourcesCategories(labels)
+            get_sourceColor(c) for c in labels #get_sourcesCategories(labels)
         ]
         
-        fig, ax = plt.subplots()
+        fig, ax = plt.subplots(figsize=(14, 4))
         ax.stackplot(df.index, y, colors=colors, labels=labels)
-        ax.set_ylabel(pmf.totalVar + "$\mu g/ m^{-3}$")
+        ax.set_ylabel(pmf.totalVar + " (µg m⁻³)")
         ax.set_ylim(0, ax.get_ylim()[1])
         ax.legend(frameon=False, loc="upper left", bbox_to_anchor=(1., 1.))
         plt.subplots_adjust(
             top=0.961,
             bottom=0.081,
-            left=0.037,
-            right=0.887,
+            left=0.042,
+            right=0.87,
             hspace=0.2,
             wspace=0.2
         )
@@ -1411,7 +1411,7 @@ class PMF(object):
     Several plot utilities are also available.
     """
 
-    def __init__(self, site, BDIR, program=None):
+    def __init__(self, site, reader=None, BDIR=None, program=None):
         """Create a PMF object from the xlsx files output of EPAPMF5.
 
         Parameters
@@ -1422,6 +1422,7 @@ class PMF(object):
 
         """
         self._site = site
+        self._reader = reader
         self._BDIR = BDIR
         self._program = program
 
@@ -1437,6 +1438,8 @@ class PMF(object):
         self.dfcontrib_c = None
         self.dfBS_profile_b = None
         self.dfBS_profile_c = None
+        self.dfbootstrap_mapping_b = None
+        self.dfbootstrap_mapping_c = None
         self.df_disp_swap_b = None
         self.df_disp_swap_c = None
         self.df_uncertainties_summary_b = None
