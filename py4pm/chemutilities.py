@@ -717,7 +717,7 @@ class plot():
                     continue
                 cumsum += v
                 if xvar == "other":
-                    annot = ax.annotate("{}".format(format_ions(i)), 
+                    annot = ax.annotate("{}".format(pretty_specie(i)), 
                                        (xpos[xvar]-0.28, (cumsum -v/2) ),
                                        ha="right",
                                        va="center"
@@ -840,10 +840,10 @@ class plot():
 
         dff = pd.DataFrame()
         for k in TO_GROUP.keys():
-            df[k] = df[TO_GROUP[k]].clip(0).sum(axis=1, min_count=1)
+            df[k] = df[TO_GROUP[k]].astype(float).clip(0).sum(axis=1, min_count=1)
         
         # Get only the columns we have
-        dff = df.reindex(TO_GROUP.keys(), axis=1)
+        dff = df[TO_GROUP.keys()]
         dff["OM"] = df["OC"]*1.8
         to_keep = ["EC", "NO3-", "NH4+", "Cl-", "SO42-", "Ca2+", "Oxalate", "MSA",
                    "Glucose", "Cellulose", "HULIS"]
