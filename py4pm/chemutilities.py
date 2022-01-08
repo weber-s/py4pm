@@ -600,6 +600,9 @@ def _specie_unit(text):
         "PM_µg/m3": "µg m⁻³",
         "OC": "µg m⁻³",
         "EC": "µg m⁻³",
+        "PM10": "µg m⁻³",
+        "PM2.5": "µg m⁻³",
+        "PM10recons": "µg m⁻³",
     }
     if text in map_species.keys():
         return map_species[text]
